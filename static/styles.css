@@ -1,0 +1,64 @@
+.brand-logo {
+    margin-left: 20px;
+}
+
+.concordance-table {
+    margin-top: 20px;
+    height: calc(100vh - 200px); /* Adjust height to fit within the viewport */
+    overflow-y: auto; /* Add vertical scroll within the table if needed */
+}
+
+.kwic {
+    font-weight: bold;
+    color: #2196F3;
+}
+
+.context-column {
+    max-width: 400px;
+}
+
+#hover-sidebar-trigger {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 20px;
+    height: 100%;
+    z-index: 999; /* Ensure it is above other content */
+}
+
+#hover-sidebar {
+    position: fixed;
+    left: -240px; /* Start hidden */
+    top: 0;
+    width: 240px;
+    height: 100%;
+    background-color: #ffffff;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    transition: left 0.3s ease; /* Smooth slide effect */
+    z-index: 1000;
+}
+
+#hover-sidebar-trigger:hover + #hover-sidebar,
+#hover-sidebar:hover {
+    left: 0; /* Slide in on hover */
+}
+
+#hover-sidebar li {
+    list-style: none;
+    padding: 10px 20px;
+}
+
+#hover-sidebar li a {
+    text-decoration: none;
+    color: #333;
+    display: flex;
+    align-items: center;
+}
+
+#hover-sidebar li a:hover {
+    background-color: #e0e0e0;
+}
+
+#hover-sidebar li i.material-icons {
+    margin-right: 10px;
+}
