@@ -64,10 +64,14 @@
     color: #2196F3;
 }
 
-.results-wrapper{
+.results-wrapper {
     direction: rtl;
 }
 
-#results-table{
+#results-table {
     direction: rtl;
+}
+
+.selected {
+    background-color: #e0f7fa;
 }
