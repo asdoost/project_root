@@ -38,7 +38,7 @@ def search_corpus(key_word, window=5):
     # Initialize an empty list to store results
     results = []
 
-    for tw in corpus:
+    for tw_index, tw in enumerate(corpus):
         for i, tup in enumerate(tw):
             token, tag, lemma = tup
             if token == key_word.lower():
@@ -52,8 +52,8 @@ def search_corpus(key_word, window=5):
                 context = left*[('#','#','#')] + tw[start:end] + right*[('#','#', '#')]
                 context = [t for t,g,l in context]
 
-                # Append the result to the list
-                results.append(context)
+                # Append the result to the list with the sentence index
+                results.append({'context': context, 'sentence_index': tw_index})
 
     return results, len(results)
 
@@ -82,6 +82,14 @@ def words():
     except Exception as e:
         print(f"Error loading words: {e}")
         return jsonify([]), 500
+
+@app.route('/sentence')
+def sentence():
+    index = int(request.args.get('index'))
+    corpus = read_from_ods(CORPUS_DIR)
+    sentence = corpus[index]
+    sentence_list = [{'token': token, 'tag': tag, 'lemma': lemma} for token, tag, lemma in sentence]
+    return jsonify(sentence=sentence_list)
 
 if __name__ == '__main__':
     app.run(debug=True)
