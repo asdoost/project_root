@@ -8,13 +8,9 @@
     overflow-y: auto; /* Add vertical scroll within the table if needed */
 }
 
-.kwic {
-    font-weight: bold;
-    color: #2196F3;
-}
-
 .context-column {
     max-width: 400px;
+    white-space: nowrap; /* Prevent words from wrapping */
 }
 
 #hover-sidebar-trigger {
@@ -61,4 +57,17 @@
 
 #hover-sidebar li i.material-icons {
     margin-right: 10px;
+}
+
+.kwic {
+    font-weight: bold;
+    color: #2196F3;
+}
+
+.results-wrapper{
+    direction: rtl;
+}
+
+#results-table{
+    direction: rtl;
 }
