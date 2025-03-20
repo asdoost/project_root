@@ -1,0 +1,233 @@
+$(document).ready(function() {
+    console.log("jQuery version:", $.fn.jquery); // Check jQuery version
+    console.log("jQuery UI version:", $.ui ? $.ui.version : "jQuery UI not loaded"); // Check jQuery UI version
+
+    $('.modal').modal();
+
+    let resultsData = [];
+    let searchQuery = '';
+    let totalFrequency = 0;
+    let selectedRow = null;
+
+    function fetchResults(query, page) {
+        $.ajax({
+            url: '/search',
+            method: 'GET',
+            data: { q: query, page: page },
+            success: function(response) {
+                searchQuery = query;
+                var results = response.results;
+                resultsData = results;
+                totalFrequency = response.total_frequency;
+                var resultsTable = $('#results-table tbody');
+                var pagination = $('#pagination');
+                resultsTable.empty();
+                pagination.empty();
+
+                // Header row remains unchanged
+                resultsTable.append(
+                    `<tr>
+                        <th>#</th>
+                        <th class="context-column">R5</th>
+                        <th class="context-column">R4</th>
+                        <th class="context-column">R3</th>
+                        <th class="context-column">R2</th>
+                        <th class="context-column">R1</th>
+                        <th class="kwic">KWIC</th>
+                        <th class="context-column">L1</th>
+                        <th class="context-column">L2</th>
+                        <th class="context-column">L3</th>
+                        <th class="context-column">L4</th>
+                        <th class="context-column">L5</th>
+                    </tr>`
+                );
+
+                results.forEach(function(result, index) {
+                    const rightContext = result.context.slice(0, 5); 
+                    const kwic = result.context[5];
+                    const leftContext = result.context.slice(6);
+
+                    let rightContextsHtml = rightContext.map(word => 
+                        `<td class="context-column">${word}</td>`
+                    ).join('');
+                    
+                    let leftContextsHtml = leftContext.map(word => 
+                        `<td class="context-column">${word}</td>`
+                    ).join('');
+
+                    resultsTable.append(
+                        `<tr data-index="${result.sentence_index}">
+                            <td>${(page - 1) * response.per_page + index + 1}</td>
+                            ${rightContextsHtml}
+                            <td class="kwic">${kwic}</td>
+                            ${leftContextsHtml}
+                        </tr>`
+                    );
+                });
+
+                var totalPages = Math.ceil(response.total_results / response.per_page);
+                var maxPagesToShow = 5;
+                var startPage = Math.max(1, page - Math.floor(maxPagesToShow / 2));
+                var endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+                if (page > 1) {
+                    pagination.append('<li class="waves-effect"><a href="#" data-page="1"><i class="material-icons">first_page</i></a></li>');
+                    pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page - 1) + '"><i class="material-icons">chevron_left</i></a></li>');
+                } else {
+                    pagination.append('<li class="disabled"><a href="#"><i class="material-icons">first_page</i></a></li>');
+                    pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_left</i></a></li>');
+                }
+
+                for (var i = startPage; i <= endPage; i++) {
+                    if (i === page) {
+                        pagination.append('<li class="active"><a href="#">' + i + '</a></li>');
+                    } else {
+                        pagination.append('<li class="waves-effect"><a href="#" data-page="' + i + '">' + i + '</a></li>');
+                    }
+                }
+
+                if (page < totalPages) {
+                    pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page + 1) + '"><i class="material-icons">chevron_right</i></a></li>');
+                    pagination.append('<li class="waves-effect"><a href="#" data-page="' + totalPages + '"><i class="material-icons">last_page</i></a></li>');
+                } else {
+                    pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_right</i></a></li>');
+                    pagination.append('<li class="disabled"><a href="#"><i class="material-icons">last_page</i></a></li>');
+                }
+            }
+        });
+    }
+
+    function performSearch() {
+        var query = $('#search').val();
+        fetchResults(query, 1);
+    }
+
+    function calculateFrequency() {
+        $('#dynamic-content').html(`<p>The word "${searchQuery}" appears ${totalFrequency} times in the results.</p>`);
+        $('#dynamic-content-modal').modal('open');
+    }
+
+    $('#search-btn').on('click', function() {
+        performSearch();
+    });
+
+    $('#search').on('keypress', function(e) {
+        if (e.which === 13) {
+            performSearch();
+        }
+    });
+
+    $(document).on('click', '#pagination a', function(e) {
+        e.preventDefault();
+        var page = $(this).data('page');
+        var query = $('#search').val();
+        fetchResults(query, page);
+    });
+
+    $(document).on('click', '#statistics-option', function(e) {
+        e.preventDefault();
+        calculateFrequency();
+    });
+
+    $('.option').on('click', function(e) {
+        e.preventDefault();
+        var option = $(this).data('option');
+        if (option == 4) {
+            $('#download-modal').modal('open');
+        } else if (option == 3) {
+            if (selectedRow !== null) {
+                fetchSentence(selectedRow);
+            } else {
+                alert("Please select a result to view the full sentence.");
+            }
+        } else {
+            $('#dynamic-content').html('<p>Content for Option ' + option + '</p>');
+            $('#dynamic-content-modal').modal('open');
+        }
+    });
+
+    $('#download-btn').on('click', function() {
+        var selectedFormat = $('input[name="format"]:checked').val();
+        downloadResults(selectedFormat);
+    });
+
+    $(document).on('click', '#results-table tbody tr', function() {
+        const rowIndex = $(this).data('index');
+        if ($(this).hasClass('selected')) {
+            selectedRow = null;
+            $(this).removeClass('selected');
+        } else {
+            $('#results-table tbody tr').removeClass('selected');
+            selectedRow = rowIndex;
+            $(this).addClass('selected');
+        }
+    });
+
+    function fetchSentence(index) {
+        $.ajax({
+            url: '/sentence',
+            method: 'GET',
+            data: { index: index },
+            success: function(response) {
+                var sentence = response.sentence;
+                var sentenceHtml = sentence.map(function(tokenData) {
+                    return tokenData.token;
+                }).join(' ');
+                $('#dynamic-content').html(`<div style="direction: rtl;">${sentenceHtml}</div>`);
+                $('#dynamic-content-modal').modal('open');
+            },
+            error: function(xhr, status, error) {
+                console.error("Error fetching sentence:", error);
+            }
+        });
+    }
+
+    function downloadResults(format) {
+        let dataStr;
+        let filename;
+        let filteredResults = resultsData.filter(result => result.sentence_index === selectedRow);
+
+        if (selectedRow === null) {
+            filteredResults = resultsData.map(result => result.context);
+        }
+
+        if (format === 'csv') {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Index,R5,R4,R3,R2,R1,KWIC,L1,L2,L3,L4,L5\n";
+            filteredResults.forEach((row, index) => {
+                csvContent += `${index + 1},${row.slice(0, 5).join(',')},${row[5]},${row.slice(6).join(',')}\n`;
+            });
+            dataStr = encodeURI(csvContent);
+            filename = 'results.csv';
+        } else {
+            let txtContent = "data:text/plain;charset=utf-8,";
+            filteredResults.forEach((row, index) => {
+                txtContent += `Index: ${index + 1}\nLeft Context: ${row.slice(0, 5).join(' ')}\nKWIC: ${row[5]}\nRight Context: ${row.slice(6).join(' ')}\n\n`;
+            });
+            dataStr = encodeURI(txtContent);
+            filename = 'results.txt';
+        }
+
+        var downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute('href', dataStr);
+        downloadAnchor.setAttribute('download', filename);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        document.body.removeChild(downloadAnchor);
+    }
+
+    // Fetch the autocomplete words
+    $.ajax({
+        url: '/words',
+        method: 'GET',
+        success: function(response) {
+            console.log("Autocomplete words:", response);
+            $('#search').autocomplete({
+                source: response
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error("Error fetching autocomplete words:", error);
+        }
+    });
+});
