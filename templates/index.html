@@ -5,17 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Concordance Viewer</title>
-    <!-- Materialize CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='materialize.min.css') }}">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-    <!-- Link to external CSS file -->
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 
 <body>
-
-    <!-- Navigation -->
     <nav>
         <div class="nav-wrapper blue darken-2">
             <a href="#" class="brand-logo">Concordance</a>
@@ -27,10 +23,8 @@
         </div>
     </nav>
 
-    <!-- Side Navigation Trigger Area -->
     <div id="hover-sidebar-trigger"></div>
 
-    <!-- Side Navigation -->
     <ul id="hover-sidebar">
         <li><a href="#"><i class="material-icons">dashboard</i>Dashboard</a></li>
         <li><a href="#"><i class="material-icons">storage</i>Corpus Selection</a></li>
@@ -39,7 +33,6 @@
         <li><a href="#"><i class="material-icons">insights</i>Statistics</a></li>
     </ul>
 
-    <!-- Main Content -->
     <div class="container concordance-table">
         <div class="row">
             <div class="col s12">
@@ -51,13 +44,12 @@
             </div>
         </div>
 
-        <!-- Options Table -->
         <div class="row">
             <div class="col s12" style="text-align: right;">
                 <div class="options-table">
                     <table>
                         <tr>
-                            <td><a href="#" class="option" data-option="1"><i class="material-icons small">bar_chart</i></a></td>
+                            <td><a href="#" class="option" data-option="1" id="statistics-option"><i class="material-icons small">bar_chart</i></a></td>
                             <td><a href="#" class="option" data-option="2"><i class="material-icons small">filter_list</i></a></td>
                             <td><a href="#" class="option" data-option="3"><i class="material-icons small">visibility</i></a></td>
                             <td><a href="#" class="option" data-option="4" id="download-option"><i class="material-icons small">file_download</i></a></td>
@@ -69,32 +61,19 @@
         </div>
 
         <div class="results-wrapper">
-            <table class="highlight">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Left Context</th>
-                        <th>KWIC</th>
-                        <th>Right Context</th>
-                        <th>Source</th>
-                    </tr>
-                </thead>
-                <tbody id="results-table">
-                    <!-- Search results will be inserted here -->
+            <table class="highlight" id="results-table">
+                <tbody>
                 </tbody>
             </table>
         </div>
         <ul class="pagination center" id="pagination">
-            <!-- Pagination will be inserted here -->
         </ul>
     </div>
 
-    <!-- Dynamic Content Modal -->
     <div id="dynamic-content-modal" class="modal">
         <div class="modal-content">
             <h4>Dynamic Content</h4>
             <div id="dynamic-content">
-                <!-- Dynamic content will be inserted here -->
             </div>
         </div>
         <div class="modal-footer">
@@ -102,7 +81,6 @@
         </div>
     </div>
 
-    <!-- Download Options Modal -->
     <div id="download-modal" class="modal">
         <div class="modal-content">
             <h4>Download Options</h4>
@@ -128,16 +106,19 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
     <script src="{{ url_for('static', filename='materialize.min.js') }}"></script>
     <script>
         $(document).ready(function() {
-            // Initialize modals
+            console.log("jQuery version:", $.fn.jquery); // Check jQuery version
+            console.log("jQuery UI version:", $.ui ? $.ui.version : "jQuery UI not loaded"); // Check jQuery UI version
+
             $('.modal').modal();
 
             let resultsData = [];
+            let searchQuery = '';
+            let totalFrequency = 0;
 
             function fetchResults(query, page) {
                 $.ajax({
@@ -145,24 +126,58 @@
                     method: 'GET',
                     data: { q: query, page: page },
                     success: function(response) {
+                        searchQuery = query;
                         var results = response.results;
-                        resultsData = results; // Store results for download
-                        var resultsTable = $('#results-table');
+                        resultsData = results;
+                        totalFrequency = response.total_frequency;
+                        var resultsTable = $('#results-table tbody');
                         var pagination = $('#pagination');
                         resultsTable.empty();
                         pagination.empty();
 
+                        // Header row remains unchanged
+                        resultsTable.append(
+                            `<tr>
+                                <th>#</th>
+                                <th class="context-column">R5</th>
+                                <th class="context-column">R4</th>
+                                <th class="context-column">R3</th>
+                                <th class="context-column">R2</th>
+                                <th class="context-column">R1</th>
+                                <th class="kwic">KWIC</th>
+                                <th class="context-column">L1</th>
+                                <th class="context-column">L2</th>
+                                <th class="context-column">L3</th>
+                                <th class="context-column">L4</th>
+                                <th class="context-column">L5</th>
+                            </tr>`
+                        );
+
                         results.forEach(function(result, index) {
+
+                            const rightContext = result.slice(0, 5); 
+                            const kwic = result[5];
+                            const leftContext = result.slice(6);
+
+                            let rightContextsHtml = rightContext.map(word => 
+                                `<td class="context-column">${word}</td>`
+                            ).join('');
+                            
+                            let leftContextsHtml = leftContext.map(word => 
+                                `<td class="context-column">${word}</td>`
+                            ).join('');
+
                             resultsTable.append(
-                                '<tr>' +
-                                '<td>' + ((page - 1) * response.per_page + index + 1) + '</td>' +
-                                '<td class="context-column">' + result.left_context + '</td>' +
-                                '<td class="kwic">' + result.kwic + '</td>' +
-                                '<td class="context-column">' + result.right_context + '</td>' +
-                                '<td>' + result.source + '</td>' +
-                                '</tr>'
+                                `<tr>
+                                    <td>${(page - 1) * response.per_page + index + 1}</td>
+                                    ${rightContextsHtml}
+                                    <td class="kwic">${kwic}</td>
+                                    ${leftContextsHtml}
+                                </tr>`
                             );
                         });
+
+                        // adjustColumnWidths();
 
                         var totalPages = Math.ceil(response.total_results / response.per_page);
                         var maxPagesToShow = 5;
@@ -201,6 +216,11 @@
                 fetchResults(query, 1);
             }
 
+            function calculateFrequency() {
+                $('#dynamic-content').html(`<p>The word "${searchQuery}" appears ${totalFrequency} times in the results.</p>`);
+                $('#dynamic-content-modal').modal('open');
+            }
+
             $('#search-btn').on('click', function() {
                 performSearch();
             });
@@ -218,7 +238,11 @@
                 fetchResults(query, page);
             });
 
-            // Handle option clicks
+            $(document).on('click', '#statistics-option', function(e) {
+                e.preventDefault();
+                calculateFrequency();
+            });
+
             $('.option').on('click', function(e) {
                 e.preventDefault();
                 var option = $(this).data('option');
@@ -230,7 +254,6 @@
                 }
             });
 
-            // Handle download button click
             $('#download-btn').on('click', function() {
                 var selectedFormat = $('input[name="format"]:checked').val();
                 downloadResults(selectedFormat);
@@ -241,45 +264,45 @@
                 let filename;
 
                 if (format === 'csv') {
-                    // Prepare CSV data
                     let csvContent = "data:text/csv;charset=utf-8,";
-                    csvContent += "Index,Left Context,KWIC,Right Context,Source\n"; // Header
+                    csvContent += "Index,R5,R4,R3,R2,R1,KWIC,L1,L2,L3,L4,L5\n";
                     resultsData.forEach((row, index) => {
-                        csvContent += `${index + 1},"${row.left_context}","${row.kwic}","${row.right_context}","${row.source}"\n`;
+                        csvContent += `${index + 1},${row.slice(0, 5).join(',')},${row[5]},${row.slice(6).join(',')}\n`;
                     });
                     dataStr = encodeURI(csvContent);
                     filename = 'results.csv';
                 } else {
-                    // Prepare TXT data
                     let txtContent = "data:text/plain;charset=utf-8,";
                     resultsData.forEach((row, index) => {
-                        txtContent += `Index: ${index + 1}\nLeft Context: ${row.left_context}\nKWIC: ${row.kwic}\nRight Context: ${row.right_context}\nSource: ${row.source}\n\n`;
+                        txtContent += `Index: ${index + 1}\nLeft Context: ${row.slice(0, 5).join(' ')}\nKWIC: ${row[5]}\nRight Context: ${row.slice(6).join(' ')}\n\n`;
                     });
                     dataStr = encodeURI(txtContent);
                     filename = 'results.txt';
                 }
 
-                // Create a download link and trigger the download
                 var downloadAnchor = document.createElement('a');
                 downloadAnchor.setAttribute('href', dataStr);
                 downloadAnchor.setAttribute('download', filename);
-                document.body.appendChild(downloadAnchor); // Append to the body
-                downloadAnchor.click(); // Trigger the download
-                document.body.removeChild(downloadAnchor); // Remove from the body
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                document.body.removeChild(downloadAnchor);
             }
 
-            // Fetch all words for autocomplete
+            // Fetch the autocomplete words
             $.ajax({
                 url: '/words',
                 method: 'GET',
                 success: function(response) {
+                    console.log("Autocomplete words:", response);
                     $('#search').autocomplete({
                         source: response
                     });
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error fetching autocomplete words:", error);
                 }
             });
         });
     </script>
 </body>
-
 </html>
