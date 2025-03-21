@@ -1,4 +1,4 @@
-$(document).ready(function() {
+$(document).ready(function () {
     console.log("jQuery version:", $.fn.jquery); // Check jQuery version
     console.log("jQuery UI version:", $.ui ? $.ui.version : "jQuery UI not loaded"); // Check jQuery UI version
 
@@ -9,97 +9,117 @@ $(document).ready(function() {
     let totalFrequency = 0;
     let selectedRow = null;
 
-    function fetchResults(query, page) {
+    $('.modal').modal();
+
+    function getSearchResults(query, page, callback) {
         $.ajax({
             url: '/search',
             method: 'GET',
             data: { q: query, page: page },
-            success: function(response) {
+            success: function (response) {
                 searchQuery = query;
-                var results = response.results;
-                resultsData = results;
+                resultsData = response.results; // Store results in the global variable
                 totalFrequency = response.total_frequency;
-                var resultsTable = $('#results-table tbody');
-                var pagination = $('#pagination');
-                resultsTable.empty();
-                pagination.empty();
-
-                // Header row remains unchanged
-                resultsTable.append(
-                    `<tr>
-                        <th>#</th>
-                        <th class="context-column">R5</th>
-                        <th class="context-column">R4</th>
-                        <th class="context-column">R3</th>
-                        <th class="context-column">R2</th>
-                        <th class="context-column">R1</th>
-                        <th class="kwic">KWIC</th>
-                        <th class="context-column">L1</th>
-                        <th class="context-column">L2</th>
-                        <th class="context-column">L3</th>
-                        <th class="context-column">L4</th>
-                        <th class="context-column">L5</th>
-                    </tr>`
-                );
-
-                results.forEach(function(result, index) {
-                    const rightContext = result.context.slice(0, 5); 
-                    const kwic = result.context[5];
-                    const leftContext = result.context.slice(6);
-
-                    let rightContextsHtml = rightContext.map(word => 
-                        `<td class="context-column">${word}</td>`
-                    ).join('');
-                    
-                    let leftContextsHtml = leftContext.map(word => 
-                        `<td class="context-column">${word}</td>`
-                    ).join('');
-
-                    resultsTable.append(
-                        `<tr data-index="${result.sentence_index}">
-                            <td>${(page - 1) * response.per_page + index + 1}</td>
-                            ${rightContextsHtml}
-                            <td class="kwic">${kwic}</td>
-                            ${leftContextsHtml}
-                        </tr>`
-                    );
-                });
-
-                var totalPages = Math.ceil(response.total_results / response.per_page);
-                var maxPagesToShow = 5;
-                var startPage = Math.max(1, page - Math.floor(maxPagesToShow / 2));
-                var endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-
-                if (page > 1) {
-                    pagination.append('<li class="waves-effect"><a href="#" data-page="1"><i class="material-icons">first_page</i></a></li>');
-                    pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page - 1) + '"><i class="material-icons">chevron_left</i></a></li>');
-                } else {
-                    pagination.append('<li class="disabled"><a href="#"><i class="material-icons">first_page</i></a></li>');
-                    pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_left</i></a></li>');
-                }
-
-                for (var i = startPage; i <= endPage; i++) {
-                    if (i === page) {
-                        pagination.append('<li class="active"><a href="#">' + i + '</a></li>');
-                    } else {
-                        pagination.append('<li class="waves-effect"><a href="#" data-page="' + i + '">' + i + '</a></li>');
-                    }
-                }
-
-                if (page < totalPages) {
-                    pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page + 1) + '"><i class="material-icons">chevron_right</i></a></li>');
-                    pagination.append('<li class="waves-effect"><a href="#" data-page="' + totalPages + '"><i class="material-icons">last_page</i></a></li>');
-                } else {
-                    pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_right</i></a></li>');
-                    pagination.append('<li class="disabled"><a href="#"><i class="material-icons">last_page</i></a></li>');
-                }
+                callback(response);
             }
         });
     }
 
+    function displaySearchResults(response, page) {
+        var resultsTable = $('#results-table tbody');
+        var pagination = $('#pagination');
+        resultsTable.empty();
+        pagination.empty();
+
+        // Header row remains unchanged
+        resultsTable.append(
+            `<tr>
+                <th>#</th>
+                <th class="context-column">R5</th>
+                <th class="context-column">R4</th>
+                <th class="context-column">R3</th>
+                <th class="context-column">R2</th>
+                <th class="context-column">R1</th>
+                <th class="kwic">KWIC</th>
+                <th class="context-column">L1</th>
+                <th class="context-column">L2</th>
+                <th class="context-column">L3</th>
+                <th class="context-column">L4</th>
+                <th class="context-column">L5</th>
+            </tr>`
+        );
+
+        response.results.forEach(function (result, index) {
+            const rightContext = result.context.slice(0, 5);
+            const kwic = result.context[5];
+            const leftContext = result.context.slice(6);
+
+            let rightContextsHtml = rightContext.map(word =>
+                `<td class="context-column">${word}</td>`
+            ).join('');
+
+            let leftContextsHtml = leftContext.map(word =>
+                `<td class="context-column">${word}</td>`
+            ).join('');
+
+            resultsTable.append(
+                `<tr data-index="${result.sentence_index}">
+                    <td>${(page - 1) * response.per_page + index + 1}</td>
+                    ${rightContextsHtml}
+                    <td class="kwic">${kwic}</td>
+                    ${leftContextsHtml}
+                </tr>`
+            );
+        });
+
+        // Add radio buttons for headers to the sort modal
+        let sortHeaders = $('#sort-headers');
+        sortHeaders.empty(); // Clear previous radio buttons
+        let headers = ['R5', 'R4', 'R3', 'R2', 'R1', 'KWIC', 'L1', 'L2', 'L3', 'L4', 'L5'];
+        headers.forEach((header, index) => {
+            sortHeaders.append(`
+                <label>
+                    <input name="header" type="radio" value="${index}" ${index === 0 ? 'checked' : ''} />
+                    <span>${header}</span>
+                </label>
+            `);
+        });
+
+        var totalPages = Math.ceil(response.total_results / response.per_page);
+        var maxPagesToShow = 5;
+        var startPage = Math.max(1, page - Math.floor(maxPagesToShow / 2));
+        var endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+        if (page > 1) {
+            pagination.append('<li class="waves-effect"><a href="#" data-page="1"><i class="material-icons">first_page</i></a></li>');
+            pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page - 1) + '"><i class="material-icons">chevron_left</i></a></li>');
+        } else {
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">first_page</i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_left</i></a></li>');
+        }
+
+        for (var i = startPage; i <= endPage; i++) {
+            if (i === page) {
+                pagination.append('<li class="active"><a href="#">' + i + '</a></li>');
+            } else {
+                pagination.append('<li class="waves-effect"><a href="#" data-page="' + i + '">' + i + '</a></li>');
+            }
+        }
+
+        if (page < totalPages) {
+            pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page + 1) + '"><i class="material-icons">chevron_right</i></a></li>');
+            pagination.append('<li class="waves-effect"><a href="#" data-page="' + totalPages + '"><i class="material-icons">last_page</i></a></li>');
+        } else {
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_right</i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">last_page</i></a></li>');
+        }
+    }
+
     function performSearch() {
         var query = $('#search').val();
-        fetchResults(query, 1);
+        getSearchResults(query, 1, function(response) {
+            displaySearchResults(response, 1);
+        });
     }
 
     function calculateFrequency() {
@@ -107,33 +127,37 @@ $(document).ready(function() {
         $('#dynamic-content-modal').modal('open');
     }
 
-    $('#search-btn').on('click', function() {
+    $('#search-btn').on('click', function () {
         performSearch();
     });
 
-    $('#search').on('keypress', function(e) {
+    $('#search').on('keypress', function (e) {
         if (e.which === 13) {
             performSearch();
         }
     });
 
-    $(document).on('click', '#pagination a', function(e) {
+    $(document).on('click', '#pagination a', function (e) {
         e.preventDefault();
         var page = $(this).data('page');
         var query = $('#search').val();
-        fetchResults(query, page);
+        getSearchResults(query, page, function(response) {
+            displaySearchResults(response, page);
+        });
     });
 
-    $(document).on('click', '#statistics-option', function(e) {
+    $(document).on('click', '#statistics-option', function (e) {
         e.preventDefault();
         calculateFrequency();
     });
 
-    $('.option').on('click', function(e) {
+    $('.option').on('click', function (e) {
         e.preventDefault();
         var option = $(this).data('option');
         if (option == 4) {
             $('#download-modal').modal('open');
+        } else if (option == 5) {
+            $('#sort-modal').modal('open');
         } else if (option == 3) {
             if (selectedRow !== null) {
                 fetchSentence(selectedRow);
@@ -146,12 +170,12 @@ $(document).ready(function() {
         }
     });
 
-    $('#download-btn').on('click', function() {
+    $('#download-btn').on('click', function () {
         var selectedFormat = $('input[name="format"]:checked').val();
         downloadResults(selectedFormat);
     });
 
-    $(document).on('click', '#results-table tbody tr', function() {
+    $(document).on('click', '#results-table tbody tr', function () {
         const rowIndex = $(this).data('index');
         if ($(this).hasClass('selected')) {
             selectedRow = null;
@@ -168,15 +192,15 @@ $(document).ready(function() {
             url: '/sentence',
             method: 'GET',
             data: { index: index },
-            success: function(response) {
+            success: function (response) {
                 var sentence = response.sentence;
-                var sentenceHtml = sentence.map(function(tokenData) {
+                var sentenceHtml = sentence.map(function (tokenData) {
                     return tokenData.token;
                 }).join(' ');
                 $('#dynamic-content').html(`<div style="direction: rtl;">${sentenceHtml}</div>`);
                 $('#dynamic-content-modal').modal('open');
             },
-            error: function(xhr, status, error) {
+            error: function (xhr, status, error) {
                 console.error("Error fetching sentence:", error);
             }
         });
@@ -216,18 +240,33 @@ $(document).ready(function() {
         document.body.removeChild(downloadAnchor);
     }
 
-    // Fetch the autocomplete words
-    $.ajax({
-        url: '/words',
-        method: 'GET',
-        success: function(response) {
-            console.log("Autocomplete words:", response);
-            $('#search').autocomplete({
-                source: response
-            });
-        },
-        error: function(xhr, status, error) {
-            console.error("Error fetching autocomplete words:", error);
-        }
+    function sortSearchResults(index, order) {
+        // Sort the searchResults based on the specified index of the embedded lists and order type
+        resultsData.sort((a, b) => {
+            if (order === 'ascending') {
+                if (a.context[index] < b.context[index]) {
+                    return -1;
+                }
+                if (a.context[index] > b.context[index]) {
+                    return 1;
+                }
+            } else {
+                if (a.context[index] > b.context[index]) {
+                    return -1;
+                }
+                if (a.context[index] < b.context[index]) {
+                    return 1;
+                }
+            }
+            return 0;
+        });
+    }
+
+    $('#sort-btn').on('click', function () {
+        const selectedHeaderIndex = $('input[name="header"]:checked').val();
+        const selectedOrder = $('input[name="order"]:checked').val();
+        sortSearchResults(selectedHeaderIndex, selectedOrder);
+        displaySearchResults({ results: resultsData }, 1);
+        $('#sort-modal').modal('close');
     });
 });
