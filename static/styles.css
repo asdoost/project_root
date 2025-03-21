@@ -75,3 +75,18 @@
 .selected {
     background-color: #e0f7fa;
 }
+
+/* Align radio buttons and labels to the left */
+.input-field div label {
+    display: inline-block;
+    margin-right: 10px; /* Add some space between radio buttons */
+}
+
+.input-field div label span {
+    margin-right: 5px;
+}
+
+.input-field div label input[type="radio"] {
+    vertical-align: middle;
+}
+
