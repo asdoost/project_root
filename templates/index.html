@@ -40,7 +40,33 @@
                     <input id="search" type="text" class="validate">
                     <label for="search">Search Query</label>
                     <button id="search-btn" class="btn waves-effect waves-light" type="button">Search</button>
-                </div>
+                    <div style="display: inline-block; margin-left: 10px;">
+                        <label>
+                            <input class="with-gap" name="range" type="radio" value="3" />
+                            <span>3</span>
+                        </label>
+                        <label>
+                            <input class="with-gap" name="range" type="radio" value="4" />
+                            <span>4</span>
+                        </label>
+                        <label>
+                            <input class="with-gap" name="range" type="radio" value="5" checked/>
+                            <span>5</span>
+                        </label>
+                        <label>
+                            <input class="with-gap" name="range" type="radio" value="6" />
+                            <span>6</span>
+                        </label>
+                        <label>
+                            <input class="with-gap" name="range" type="radio" value="7" />
+                            <span>7</span>
+                        </label>
+                        <label>
+                            <input class="with-gap" name="range" type="radio" value="8" />
+                            <span>8</span>
+                        </label>
+                    </div>
+                </div>                
             </div>
         </div>
 
@@ -49,11 +75,16 @@
                 <div class="options-table">
                     <table>
                         <tr>
-                            <td><a href="#" class="option" data-option="1" id="statistics-option"><i class="material-icons small">bar_chart</i></a></td>
-                            <td><a href="#" class="option" data-option="2"><i class="material-icons small">filter_list</i></a></td>
-                            <td><a href="#" class="option" data-option="3"><i class="material-icons small">visibility</i></a></td>
-                            <td><a href="#" class="option" data-option="4" id="download-option"><i class="material-icons small">file_download</i></a></td>
-                            <td><a href="#" class="option" data-option="5"><i class="material-icons small">sort</i></a></td>
+                            <td><a href="#" class="option" data-option="1" id="statistics-option"><i
+                                        class="material-icons small">bar_chart</i></a></td>
+                            <td><a href="#" class="option" data-option="2"><i
+                                        class="material-icons small">filter_list</i></a></td>
+                            <td><a href="#" class="option" data-option="3"><i
+                                        class="material-icons small">visibility</i></a></td>
+                            <td><a href="#" class="option" data-option="4" id="download-option"><i
+                                        class="material-icons small">file_download</i></a></td>
+                            <td><a href="#" class="option" data-option="5"><i 
+                                        class="material-icons small">sort</i></a></td>
                         </tr>
                     </table>
                 </div>
@@ -103,6 +134,32 @@
         <div class="modal-footer">
             <button id="download-btn" class="btn waves-effect waves-light" type="button">Download</button>
             <a href="#" class="modal-close waves-effect waves-green btn-flat">Close</a>
+        </div>
+    </div>
+
+    <!-- Add this modal in the body section of your index.html file -->
+    <div id="sort-modal" class="modal">
+        <div class="modal-content">
+            <h4>Sort Options</h4>
+            <form id="sort-form">
+                <div id="sort-headers" style="display: flex; justify-content: space-around; margin-bottom: 1em;">
+                    <!-- Radio buttons for headers will be dynamically added here -->
+                </div>
+                <div>
+                    <label>
+                        <input name="order" type="radio" value="ascending" checked />
+                        <span>Ascending</span>
+                    </label>
+                    <label>
+                        <input name="order" type="radio" value="descending" />
+                        <span>Descending</span>
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button id="sort-btn" class="btn waves-effect waves-light" type="button">Sort</button>
+            <a href="#" class="modal-close waves-effect waves-green btn-flat">Cancel</a>
         </div>
     </div>
 
