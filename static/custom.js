@@ -11,11 +11,11 @@ $(document).ready(function () {
 
     $('.modal').modal();
 
-    function getSearchResults(query, page, callback) {
+    function getSearchResults(query, page, window, callback) {
         $.ajax({
             url: '/search',
             method: 'GET',
-            data: { q: query, page: page },
+            data: { q: query, page: page, window: window },
             success: function (response) {
                 searchQuery = query;
                 resultsData = response.results; // Store results in the global variable
@@ -31,28 +31,27 @@ $(document).ready(function () {
         resultsTable.empty();
         pagination.empty();
 
-        // Header row remains unchanged
-        resultsTable.append(
-            `<tr>
-                <th>#</th>
-                <th class="context-column">R5</th>
-                <th class="context-column">R4</th>
-                <th class="context-column">R3</th>
-                <th class="context-column">R2</th>
-                <th class="context-column">R1</th>
-                <th class="kwic">KWIC</th>
-                <th class="context-column">L1</th>
-                <th class="context-column">L2</th>
-                <th class="context-column">L3</th>
-                <th class="context-column">L4</th>
-                <th class="context-column">L5</th>
-            </tr>`
-        );
+        // Get the window size from the global variable
+        let window = $('input[name="range"]:checked').val();
+        let headers = convertNumberToList(window);
 
-        response.results.forEach(function (result, index) {
-            const rightContext = result.context.slice(0, 5);
-            const kwic = result.context[5];
-            const leftContext = result.context.slice(6);
+        resultsTable.append(`
+            <tr>
+              <th>#</th>
+              ${headers.map(header => {
+                if (header === 'KWIC') {
+                  return `<th class="kwic">${header}</th>`;
+                } else {
+                  return `<th class="context-column">${header}</th>`;
+                }
+              }).join('')}
+            </tr>
+          `);
+
+        resultsData.forEach(function (result, index) {
+            const rightContext = result.context.slice(0, window);
+            const kwic = result.context[window];
+            const leftContext = result.context.slice(window + 1);
 
             let rightContextsHtml = rightContext.map(word =>
                 `<td class="context-column">${word}</td>`
@@ -75,7 +74,6 @@ $(document).ready(function () {
         // Add radio buttons for headers to the sort modal
         let sortHeaders = $('#sort-headers');
         sortHeaders.empty(); // Clear previous radio buttons
-        let headers = ['R5', 'R4', 'R3', 'R2', 'R1', 'KWIC', 'L1', 'L2', 'L3', 'L4', 'L5'];
         headers.forEach((header, index) => {
             sortHeaders.append(`
                 <label>
@@ -94,8 +92,8 @@ $(document).ready(function () {
             pagination.append('<li class="waves-effect"><a href="#" data-page="1"><i class="material-icons">first_page</i></a></li>');
             pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page - 1) + '"><i class="material-icons">chevron_left</i></a></li>');
         } else {
-            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">first_page</i></a></li>');
-            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_left</i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">first_page"></i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_left"></i></a></li>');
         }
 
         for (var i = startPage; i <= endPage; i++) {
@@ -110,14 +108,15 @@ $(document).ready(function () {
             pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page + 1) + '"><i class="material-icons">chevron_right</i></a></li>');
             pagination.append('<li class="waves-effect"><a href="#" data-page="' + totalPages + '"><i class="material-icons">last_page</i></a></li>');
         } else {
-            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_right</i></a></li>');
-            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">last_page</i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_right"></i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">last_page"></i></a></li>');
         }
     }
 
     function performSearch() {
         var query = $('#search').val();
-        getSearchResults(query, 1, function(response) {
+        let window = $('input[name="range"]:checked').val();
+        getSearchResults(query, 1, window, function(response) {
             displaySearchResults(response, 1);
         });
     }
@@ -141,7 +140,8 @@ $(document).ready(function () {
         e.preventDefault();
         var page = $(this).data('page');
         var query = $('#search').val();
-        getSearchResults(query, page, function(response) {
+        let window = $('input[name="range"]:checked').val();
+        getSearchResults(query, page, window, function(response) {
             displaySearchResults(response, page);
         });
     });
@@ -269,4 +269,16 @@ $(document).ready(function () {
         displaySearchResults({ results: resultsData }, 1);
         $('#sort-modal').modal('close');
     });
+    function convertNumberToList(n) {
+        let result = [];
+        for (let i = n; i > 0; i--) {
+          result.push(`R${i}`);
+        }
+        result.push('KWIC');
+        for (let i = 1; i <= n; i++) {
+          result.push(`L${i}`);
+        }
+        return result;
+      }
+      
 });
