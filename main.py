@@ -1,7 +1,8 @@
-import json
 import os
-from flask import Flask, render_template, request, jsonify
+import re
+import json
 import pandas as pd
+from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
@@ -32,7 +33,7 @@ def read_from_ods(path):
         
     return result
 
-def search_corpus(key_word, window=5):
+def search_corpus(key_word, window, part):
     corpus = read_from_ods(CORPUS_DIR)
 
     # Initialize an empty list to store results
@@ -41,12 +42,15 @@ def search_corpus(key_word, window=5):
     for tw_index, tw in enumerate(corpus):
         for i, tup in enumerate(tw):
             token, tag, lemma = tup
-            if token == key_word.lower():
+            lemma = re.sub('[َُِ]', '', lemma)
+            if ((part =='token' and token == key_word.lower()) or 
+                (part =='lemma' and lemma == key_word.lower())):
+
                 # Calculate the start and end indices for the window
                 start = max(0, i - window)
                 end = min(len(tw), i + window + 1)
                 left = 0 if i - start == window else window - (i - start)
-                right = 0 if end - i == window else window - (end - i)
+                right = 0 if end - i == window else window - (end - i) + 1
 
                 # Extract the words within the window
                 context = left*[('#','#','#')] + tw[start:end] + right*[('#','#', '#')]
@@ -65,8 +69,10 @@ def index():
 def search():
     query = request.args.get('q')
     page = int(request.args.get('page', 1))
-    per_page = 5
-    results, total_frequency = search_corpus(query)
+    window = int(request.args.get('window', 5))
+    part = request.args.get('part', 'token')
+    per_page = 10
+    results, total_frequency = search_corpus(query, window, part)
     total_results = len(results)
     start = (page - 1) * per_page
     end = start + per_page
