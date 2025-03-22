@@ -33,33 +33,88 @@ def read_from_ods(path):
         
     return result
 
-def search_corpus(key_word, window, part):
+def search_corpus(
+    target_word: str,
+    context_window: int,
+    match_type: str
+) -> tuple:
+    """
+    Searches a corpus for occurrences of a target word within a specified context window.
+
+    Parameters
+    ----------
+    target_word : str
+        The word to search for in the corpus.
+    context_window : int
+        The number of words to include in the context on each side of the target word.
+    match_type : str
+        Specifies whether to match against 'token' or 'lemma'.
+
+    Returns
+    -------
+    tuple
+        A tuple containing a list of dictionaries with context information and the total count of matches.
+        Each dictionary includes 'context' (a list of tokens) and 'sentence_index'.
+
+    Notes
+    -----
+    - The function preprocesses the corpus by removing diacritics from lemmas.
+    - It performs case-insensitive matching.
+    """
+
+    # Precompile regex pattern for diacritic removal using code points
+    DIACRITIC_PATTERN = re.compile(u'[\u064E\u064F\u0650\u064B\u064C\u064D\u0651\u0652]')
+
     corpus = read_from_ods(CORPUS_DIR)
-
-    # Initialize an empty list to store results
+    target_word = target_word.lower()
     results = []
+    joined_setences = {}
+    padding_tuple = ('#', '#', '#')
+    
+    # Preprocess once per corpus entry
+    for sent_idx, sentence in enumerate(corpus):
+        # Create a preprocessed list of tuples with normalized lemma
+        processed_sent = [
+            (tpl[0].lower(), tpl[1], DIACRITIC_PATTERN.sub('', tpl[2]).lower())
+            for tpl in sentence
+        ]
+        
+        # Find matches using list comprehension
+        matches = [
+            (i, token, lemma) for i, (token, _, lemma) in enumerate(processed_sent)
+            if (match_type == 'token' and token == target_word) or 
+               (match_type == 'lemma' and lemma == target_word)
+        ]
+        
+        for i, _, _ in matches:
+            # Calculate window boundaries
+            start = max(0, i - context_window)
+            end = min(len(sentence), i + context_window + 1)
+            
+            # Calculate required padding using clearer variable names
+            left_pad = max(0, context_window - (i - start))
+            right_pad = max(0, context_window - (end - i - 1))
+            
+            # Build context with padding
+            context = (
+                [padding_tuple] * left_pad +
+                sentence[start:end] +
+                [padding_tuple] * right_pad
+            )
+            
+            # Extract tokens using list comprehension
+            context_tokens = [t for t, _, _ in context]
+            
+            results.append({
+                'context': context_tokens,
+                'sentence_index': sent_idx,
+                # f'{sent_idx}': ' '.join(['\n' if t=='؎' else t for t, _, _ in sentence])
+            })
+            joined_setences[sent_idx] = ' '.join(['\n' if t=='؎' else t for t, _, _ in sentence])
+    results.sort(key=lambda x: x['context'][context_window])
+    
+    return results, joined_setences
 
-    for tw_index, tw in enumerate(corpus):
-        for i, tup in enumerate(tw):
-            token, tag, lemma = tup
-            lemma = re.sub('[َُِ]', '', lemma)
-            if ((part =='token' and token == key_word.lower()) or 
-                (part =='lemma' and lemma == key_word.lower())):
-
-                # Calculate the start and end indices for the window
-                start = max(0, i - window)
-                end = min(len(tw), i + window + 1)
-                left = 0 if i - start == window else window - (i - start)
-                right = 0 if end - i == window else window - (end - i) + 1
-
-                # Extract the words within the window
-                context = left*[('#','#','#')] + tw[start:end] + right*[('#','#', '#')]
-                context = [t for t,g,l in context]
-
-                # Append the result to the list with the sentence index
-                results.append({'context': context, 'sentence_index': tw_index})
-
-    return results, len(results)
 
 @app.route('/')
 def index():
@@ -69,15 +124,21 @@ def index():
 def search():
     query = request.args.get('q')
     page = int(request.args.get('page', 1))
-    window = int(request.args.get('window', 5))
-    part = request.args.get('part', 'token')
+    context_window = int(request.args.get('window', 5))
+    match_type = request.args.get('match_type', 'token')
     per_page = 10
-    results, total_frequency = search_corpus(query, window, part)
-    total_results = len(results)
+    results, joined_setences = search_corpus(query, context_window, match_type)
+    total_frequency = len(results)
     start = (page - 1) * per_page
     end = start + per_page
     paginated_results = results[start:end]
-    return jsonify(results=paginated_results, total_results=total_results, total_frequency=total_frequency, page=page, per_page=per_page)
+    return jsonify(
+        results=paginated_results, 
+        total_frequency=total_frequency, 
+        page=page, 
+        per_page=per_page,
+        joined_setences=joined_setences
+        )
 
 @app.route('/words')
 def words():
@@ -88,14 +149,6 @@ def words():
     except Exception as e:
         print(f"Error loading words: {e}")
         return jsonify([]), 500
-
-@app.route('/sentence')
-def sentence():
-    index = int(request.args.get('index'))
-    corpus = read_from_ods(CORPUS_DIR)
-    sentence = corpus[index]
-    sentence_list = [{'token': token, 'tag': tag, 'lemma': lemma} for token, tag, lemma in sentence]
-    return jsonify(sentence=sentence_list)
 
 if __name__ == '__main__':
     app.run(debug=True)
