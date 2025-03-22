@@ -32,7 +32,7 @@ $(document).ready(function () {
         pagination.empty();
 
         // Get the window size from the global variable
-        let window = $('input[name="range"]:checked').val();
+        let window = Number($('input[name="range"]:checked').val());
         let headers = convertNumberToList(window);
 
         resultsTable.append(`
@@ -48,7 +48,7 @@ $(document).ready(function () {
             </tr>
           `);
 
-        resultsData.forEach(function (result, index) {
+        response.results.forEach(function (result, index) {
             const rightContext = result.context.slice(0, window);
             const kwic = result.context[window];
             const leftContext = result.context.slice(window + 1);
@@ -60,7 +60,7 @@ $(document).ready(function () {
             let leftContextsHtml = leftContext.map(word =>
                 `<td class="context-column">${word}</td>`
             ).join('');
-
+            
             resultsTable.append(
                 `<tr data-index="${result.sentence_index}">
                     <td>${(page - 1) * response.per_page + index + 1}</td>
@@ -115,7 +115,7 @@ $(document).ready(function () {
 
     function performSearch() {
         var query = $('#search').val();
-        let window = $('input[name="range"]:checked').val();
+        let window = Number($('input[name="range"]:checked').val());
         getSearchResults(query, 1, window, function(response) {
             displaySearchResults(response, 1);
         });
@@ -140,7 +140,7 @@ $(document).ready(function () {
         e.preventDefault();
         var page = $(this).data('page');
         var query = $('#search').val();
-        let window = $('input[name="range"]:checked').val();
+        let window = Number($('input[name="range"]:checked').val());
         getSearchResults(query, page, window, function(response) {
             displaySearchResults(response, page);
         });
