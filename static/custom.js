@@ -11,11 +11,11 @@ $(document).ready(function () {
 
     $('.modal').modal();
 
-    function getSearchResults(query, page, window, callback) {
+    function getSearchResults(query, page, window, part, callback) {
         $.ajax({
             url: '/search',
             method: 'GET',
-            data: { q: query, page: page, window: window },
+            data: { q: query, page: page, window: window, part: part },
             success: function (response) {
                 searchQuery = query;
                 resultsData = response.results; // Store results in the global variable
@@ -92,8 +92,8 @@ $(document).ready(function () {
             pagination.append('<li class="waves-effect"><a href="#" data-page="1"><i class="material-icons">first_page</i></a></li>');
             pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page - 1) + '"><i class="material-icons">chevron_left</i></a></li>');
         } else {
-            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">first_page"></i></a></li>');
-            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_left"></i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">first_page</i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_left</i></a></li>');
         }
 
         for (var i = startPage; i <= endPage; i++) {
@@ -108,15 +108,16 @@ $(document).ready(function () {
             pagination.append('<li class="waves-effect"><a href="#" data-page="' + (page + 1) + '"><i class="material-icons">chevron_right</i></a></li>');
             pagination.append('<li class="waves-effect"><a href="#" data-page="' + totalPages + '"><i class="material-icons">last_page</i></a></li>');
         } else {
-            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_right"></i></a></li>');
-            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">last_page"></i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">chevron_right</i></a></li>');
+            pagination.append('<li class="disabled"><a href="#"><i class="material-icons">last_page</i></a></li>');
         }
     }
 
     function performSearch() {
         var query = $('#search').val();
         let window = Number($('input[name="range"]:checked').val());
-        getSearchResults(query, 1, window, function(response) {
+        let part = $('input[name="search-type"]:checked').val();
+        getSearchResults(query, 1, window, part, function(response) {
             displaySearchResults(response, 1);
         });
     }
@@ -141,7 +142,8 @@ $(document).ready(function () {
         var page = $(this).data('page');
         var query = $('#search').val();
         let window = Number($('input[name="range"]:checked').val());
-        getSearchResults(query, page, window, function(response) {
+        let part = $('input[name="search-type"]:checked').val();
+        getSearchResults(query, page, window, part, function(response) {
             displaySearchResults(response, page);
         });
     });
