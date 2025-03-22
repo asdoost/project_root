@@ -90,3 +90,12 @@
     vertical-align: middle;
 }
 
+.pagination .disabled {
+    pointer-events: none;
+    cursor: default;
+    opacity: 0.5;
+}
+
+.pagination .disabled a {
+    color: #bdbdbd;
+}
