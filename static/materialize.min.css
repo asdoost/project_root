@@ -9131,3 +9131,14 @@ input[type=range]::-ms-thumb {
         margin-top: 1.2rem
     }
 }
+
+.disabled {
+    pointer-events: none;
+    cursor: default;
+    opacity: 0.6;
+}
+
+.pagination .disabled a {
+    color: #bdbdbd;
+}
+  
