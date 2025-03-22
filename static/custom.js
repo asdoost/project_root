@@ -11,15 +11,16 @@ $(document).ready(function () {
 
     $('.modal').modal();
 
-    function getSearchResults(query, page, window, part, callback) {
+    function getSearchResults(query, page, context_window, match_type, callback) {
         $.ajax({
             url: '/search',
             method: 'GET',
-            data: { q: query, page: page, window: window, part: part },
+            data: { q: query, page: page, context_window: context_window, match_type: match_type },
             success: function (response) {
                 searchQuery = query;
                 resultsData = response.results; // Store results in the global variable
                 totalFrequency = response.total_frequency;
+                joined_setences = response.joined_setences
                 callback(response);
             }
         });
@@ -32,8 +33,8 @@ $(document).ready(function () {
         pagination.empty();
 
         // Get the window size from the global variable
-        let window = Number($('input[name="range"]:checked').val());
-        let headers = convertNumberToList(window);
+        let context_window = Number($('input[name="range"]:checked').val());
+        let headers = convertNumberToList(context_window);
 
         resultsTable.append(`
             <tr>
@@ -49,9 +50,9 @@ $(document).ready(function () {
           `);
 
         response.results.forEach(function (result, index) {
-            const rightContext = result.context.slice(0, window);
-            const kwic = result.context[window];
-            const leftContext = result.context.slice(window + 1);
+            const rightContext = result.context.slice(0, context_window);
+            const kwic = result.context[context_window];
+            const leftContext = result.context.slice(context_window + 1);
 
             let rightContextsHtml = rightContext.map(word =>
                 `<td class="context-column">${word}</td>`
@@ -83,7 +84,7 @@ $(document).ready(function () {
             `);
         });
 
-        var totalPages = Math.ceil(response.total_results / response.per_page);
+        var totalPages = Math.ceil(response.total_frequency / response.per_page);
         var maxPagesToShow = 5;
         var startPage = Math.max(1, page - Math.floor(maxPagesToShow / 2));
         var endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
@@ -115,9 +116,9 @@ $(document).ready(function () {
 
     function performSearch() {
         var query = $('#search').val();
-        let window = Number($('input[name="range"]:checked').val());
-        let part = $('input[name="search-type"]:checked').val();
-        getSearchResults(query, 1, window, part, function(response) {
+        let context_window = Number($('input[name="range"]:checked').val());
+        let match_type = $('input[name="search-type"]:checked').val();
+        getSearchResults(query, 1, context_window, match_type, function(response) {
             displaySearchResults(response, 1);
         });
     }
@@ -141,9 +142,9 @@ $(document).ready(function () {
         e.preventDefault();
         var page = $(this).data('page');
         var query = $('#search').val();
-        let window = Number($('input[name="range"]:checked').val());
-        let part = $('input[name="search-type"]:checked').val();
-        getSearchResults(query, page, window, part, function(response) {
+        let context_window = Number($('input[name="range"]:checked').val());
+        let match_type = $('input[name="search-type"]:checked').val();
+        getSearchResults(query, page, context_window, match_type, function(response) {
             displaySearchResults(response, page);
         });
     });
@@ -190,23 +191,15 @@ $(document).ready(function () {
     });
 
     function fetchSentence(index) {
-        $.ajax({
-            url: '/sentence',
-            method: 'GET',
-            data: { index: index },
-            success: function (response) {
-                var sentence = response.sentence;
-                var sentenceHtml = sentence.map(function (tokenData) {
-                    return tokenData.token;
-                }).join(' ');
-                $('#dynamic-content').html(`<div style="direction: rtl;">${sentenceHtml}</div>`);
-                $('#dynamic-content-modal').modal('open');
-            },
-            error: function (xhr, status, error) {
-                console.error("Error fetching sentence:", error);
-            }
-        });
+        const sentence = joined_setences[index].replace(/\n/g, '<br>');
+        $('#dynamic-content').html(`
+            <div style="direction: rtl;">
+                <p>${sentence}</p>
+            </div>`
+        );
+        $('#dynamic-content-modal').modal('open');
     }
+    
 
     function downloadResults(format) {
         let dataStr;
