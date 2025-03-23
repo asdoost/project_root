@@ -11,7 +11,12 @@ $(document).ready(function () {
 
     $('.modal').modal();
 
-    function getSearchResults(query, page, context_window, match_type, callback) {
+    function getSearchResults(page, callback) {
+
+        let query = $('#search').val();
+        let context_window = Number($('input[name="range"]:checked').val());
+        let match_type = $('input[name="search-type"]:checked').val();
+
         $.ajax({
             url: '/search',
             method: 'GET',
@@ -20,6 +25,7 @@ $(document).ready(function () {
                 searchQuery = query;
                 resultsData = response.results; // Store results in the global variable
                 totalFrequency = response.total_frequency;
+                corpus_length = response.corpus_length
                 joined_setences = response.joined_setences
                 callback(response);
             }
@@ -114,37 +120,40 @@ $(document).ready(function () {
         }
     }
 
-    function performSearch() {
-        var query = $('#search').val();
-        let context_window = Number($('input[name="range"]:checked').val());
-        let match_type = $('input[name="search-type"]:checked').val();
-        getSearchResults(query, 1, context_window, match_type, function(response) {
-            displaySearchResults(response, 1);
-        });
-    }
-
     function calculateFrequency() {
-        $('#dynamic-content').html(`<p>The word "${searchQuery}" appears ${totalFrequency} times in the results.</p>`);
+        $('#dynamic-content').html(
+            `<h4>Frequency Information</h4>
+            <hr>
+            <p>
+            Query: ${searchQuery}
+            </br>
+            Frequency: ${totalFrequency}
+            </br>
+            Frequency (per thousand tokens): ${totalFrequency/1000}
+            </br>
+            Percentage in the corpus: ${(totalFrequency/corpus_length*100).toFixed(2)}
+            </p>`);
         $('#dynamic-content-modal').modal('open');
     }
 
     $('#search-btn').on('click', function () {
-        performSearch();
+        getSearchResults(1, function(response) {
+            displaySearchResults(response, 1);
+        });
     });
 
     $('#search').on('keypress', function (e) {
         if (e.which === 13) {
-            performSearch();
+            getSearchResults(1, function(response) {
+                displaySearchResults(response, 1);
+            });
         }
     });
 
     $(document).on('click', '#pagination a', function (e) {
         e.preventDefault();
         var page = $(this).data('page');
-        var query = $('#search').val();
-        let context_window = Number($('input[name="range"]:checked').val());
-        let match_type = $('input[name="search-type"]:checked').val();
-        getSearchResults(query, page, context_window, match_type, function(response) {
+        getSearchResults(page, function(response) {
             displaySearchResults(response, page);
         });
     });
@@ -193,8 +202,10 @@ $(document).ready(function () {
     function fetchSentence(index) {
         const sentence = joined_setences[index].replace(/\n/g, '<br>');
         $('#dynamic-content').html(`
-            <div style="direction: rtl;">
-                <p>${sentence}</p>
+            <div>
+                <h4>The Full Tweet</h4>
+                <hr>
+                <p style="direction: rtl;">${sentence}</p>
             </div>`
         );
         $('#dynamic-content-modal').modal('open');
