@@ -7,7 +7,7 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-CORPUS_DIR = 'corpus/sample_corpus.pkl'#os.path.join(os.path.dirname(os.path.abspath(__file__)), 'corpus')
+CORPUS_DIR = 'corpus/sample_corpus.pkl'
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
 def file_handling(path, mod="rb", data=""):
@@ -25,7 +25,7 @@ def search_corpus(
     target_word: str,
     context_window: int,
     match_type: str
-) -> tuple:
+    ) -> tuple:
     """
     Searches a corpus for occurrences of a target word within a specified context window.
 
@@ -58,9 +58,13 @@ def search_corpus(
     results = []
     joined_setences = {}
     padding_tuple = ('#', '#', '#')
+    corpus_length = 0
     
     # Preprocess once per corpus entry
     for sent_idx, sentence in enumerate(corpus):
+
+        corpus_length += len(sentence)
+
         # Create a preprocessed list of tuples with normalized lemma
         processed_sent = [
             (tpl[0].lower(), tpl[1], DIACRITIC_PATTERN.sub('', tpl[2]).lower())
@@ -101,7 +105,7 @@ def search_corpus(
             joined_setences[sent_idx] = ' '.join(['\n' if t=='؎' else t for t, _, _ in sentence])
     results.sort(key=lambda x: x['context'][context_window])
     
-    return results, joined_setences
+    return results, joined_setences, corpus_length
 
 
 @app.route('/')
@@ -112,10 +116,10 @@ def index():
 def search():
     query = request.args.get('q')
     page = int(request.args.get('page', 1))
-    context_window = int(request.args.get('window', 5))
+    context_window = int(request.args.get('context_window', 5))
     match_type = request.args.get('match_type', 'token')
     per_page = 10
-    results, joined_setences = search_corpus(query, context_window, match_type)
+    results, joined_setences, corpus_length = search_corpus(query, context_window, match_type)
     total_frequency = len(results)
     start = (page - 1) * per_page
     end = start + per_page
@@ -125,7 +129,8 @@ def search():
         total_frequency=total_frequency, 
         page=page, 
         per_page=per_page,
-        joined_setences=joined_setences
+        joined_setences=joined_setences,
+        corpus_length=corpus_length
         )
 
 @app.route('/words')
@@ -140,4 +145,3 @@ def words():
 
 if __name__ == '__main__':
     app.run(debug=True)
-    
