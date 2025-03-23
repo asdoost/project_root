@@ -1,37 +1,25 @@
 import os
 import re
 import json
-import pandas as pd
+from pickle5 import pickle
+from termcolor import colored
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-CORPUS_DIR = '/home/asdoost/Scripts/projects/project_root/corpus/sample_corpus.ods'#os.path.join(os.path.dirname(os.path.abspath(__file__)), 'corpus')
+CORPUS_DIR = 'corpus/sample_corpus.pkl'#os.path.join(os.path.dirname(os.path.abspath(__file__)), 'corpus')
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
-def read_from_ods(path):
-    """
-    Reads ODS file and reconstructs original nested list structure.
-    
-    Returns:
-    list of lists of tuples - [[(token, tag, lemma), ...], ...]
-    """
-    df = pd.read_excel(path, engine='odf').fillna(pd.NA)
-    result = []
-    current_sublist = []
-    
-    for _, row in df.iterrows():
-        if all(pd.isna(row)):
-            if current_sublist:
-                result.append(current_sublist)
-                current_sublist = []
-        else:
-            current_sublist.append(tuple(row))
-    
-    if current_sublist:  # Add last sublist if exists
-        result.append(current_sublist)
+def file_handling(path, mod="rb", data=""):
+
+    with open(path, mod) as handle:
+        if mod=="rb":
+            data = pickle.load(handle)
+            return data
         
-    return result
+        elif mod=="wb":
+            pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            print(colored(f"The file has been saved as\n", "yellow") + colored(path, "green"))
 
 def search_corpus(
     target_word: str,
@@ -65,7 +53,7 @@ def search_corpus(
     # Precompile regex pattern for diacritic removal using code points
     DIACRITIC_PATTERN = re.compile(u'[\u064E\u064F\u0650\u064B\u064C\u064D\u0651\u0652]')
 
-    corpus = read_from_ods(CORPUS_DIR)
+    corpus = file_handling(CORPUS_DIR)
     target_word = target_word.lower()
     results = []
     joined_setences = {}
@@ -152,3 +140,4 @@ def words():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    
