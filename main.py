@@ -7,7 +7,7 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-CORPUS_DIR = 'corpus/sample_corpus.pkl'
+CORPUS_DIR = 'corpus/whole_corpus.pkl'
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
 def file_handling(path, mod="rb", data=""):
@@ -29,8 +29,44 @@ def edit_errors(token):
     else:
         raise "The token don't have a error struture"
 
+import re
+
+def wildcard_search(pattern, case_insensitive=False, exact_match=True):
+    """
+    Search for wildcard patterns in a list of strings.
+    
+    Args:
+        pattern (str): Wildcard pattern (e.g., "a*b", "file?.txt").
+        case_insensitive (bool): If True, perform case-insensitive search.
+        exact_match (bool): If True, match entire strings; else, find substrings.
+
+    Returns:
+        regex pattern
+    """
+    # Convert wildcards to regex
+    regex_pattern = ""
+    for char in pattern:
+        if char == "*":
+            regex_pattern += ".*"
+        elif char == "?":
+            regex_pattern += "."
+        else:
+            regex_pattern += re.escape(char)  # Escape special regex characters
+
+    # Add anchors for exact matches
+    if exact_match:
+        regex_pattern = f"^{regex_pattern}$"
+
+    # Compile regex with flags
+    flags = re.IGNORECASE if case_insensitive else 0
+    regex = re.compile(regex_pattern, flags)
+
+    # Return matches
+    return regex
+
+
 def search_corpus(
-    target_word: str,
+    query_string: str,
     context_window: int,
     match_type: str,
     explicit: str,
@@ -43,7 +79,7 @@ def search_corpus(
 
     Parameters
     ----------
-    target_word : str
+    query_string : str
         The word to search for in the corpus.
     context_window : int
         The number of words to include in the context on each side of the target word.
@@ -66,11 +102,14 @@ def search_corpus(
     DIACRITIC_PATTERN = re.compile(u'[\u064E\u064F\u0650\u064B\u064C\u064D\u0651\u0652]')
 
     corpus = file_handling(CORPUS_DIR)
-    target_word = target_word.lower()
     results = []
     joined_setences = {}
+    token_dic = {}
+    tag_dic = {}
+    lemma_dic = {}
     padding_tuple = ('#', '#', '#')
     corpus_length = 0
+    query_pattern = wildcard_search(query_string)
     
     # Preprocess once per corpus entry
     for sent_idx, sentence in enumerate(corpus):
@@ -83,7 +122,9 @@ def search_corpus(
         # Create a preprocessed list of tuples with normalized lemma
         processed_sent = []
         for token, tag, lemma in sentence:
-            if (edit_error and lemma=='[DEL]') or (remove_pnc and lemma=='[PNC]') or (remove_emoji and lemma=='[EMJ]'):
+            if ((edit_error and lemma=='[DEL]') or 
+                (remove_pnc and lemma=='[PNC]') or 
+                (remove_emoji and lemma=='[EMJ]')):
                 continue
             if edit_error and tag[-1]=='E':
                 token = edit_errors(token)
@@ -92,43 +133,44 @@ def search_corpus(
             
             processed_sent.append((token.lower(), tag, DIACRITIC_PATTERN.sub('', lemma).lower()))
         
-        # Find matches using list comprehension
-        matches = [
-            (i, token, lemma) for i, (token, _, lemma) in enumerate(processed_sent)
-            if (match_type == 'token' and token == target_word) or 
-               (match_type == 'lemma' and lemma == target_word)
-        ]
         
-        for i, _, _ in matches:
-            # Calculate window boundaries
-            start = max(0, i - context_window)
-            end = min(len(processed_sent), i + context_window + 1)
+        for idx, (token, tag, lemma) in enumerate(processed_sent):
             
-            # Calculate required padding using clearer variable names
-            left_pad = max(0, context_window - (i - start))
-            right_pad = max(0, context_window - (end - i - 1))
-            
-            # Build context with padding
-            context = (
-                [padding_tuple] * left_pad +
-                processed_sent[start:end] +
-                [padding_tuple] * right_pad
-            )
-            
-            # Extract tokens using list comprehension
-            output = [t for t, _, _ in context]
-            
-            
-            results.append({
-                'context': output,
-                'sentence_index': sent_idx
-            })
-
-            joined_setences[sent_idx] = ' '.join(['\n' if t=='؎' else t for t, _, _ in sentence])
+            if ((match_type == 'token' and query_pattern.search(token)) or 
+               (match_type == 'lemma' and query_pattern.search(lemma))):
+                
+                token_dic[token] = token_dic.get(token, 0) + 1
+                tag_dic[tag[0]]   = tag_dic.get(tag[0], 0)   + 1
+                lemma_dic[lemma] = lemma_dic.get(lemma, 0) + 1
+                
+                # Calculate window boundaries
+                start = max(0, idx - context_window)
+                end = min(len(processed_sent), idx + context_window + 1)
+                
+                # Calculate required padding using clearer variable names
+                left_pad = max(0, context_window - (idx - start))
+                right_pad = max(0, context_window - (end - idx - 1))
+                
+                # Build context with padding
+                context = (
+                    [padding_tuple] * left_pad +
+                    processed_sent[start:end] +
+                    [padding_tuple] * right_pad
+                )
+                
+                # Extract tokens using list comprehension
+                output = [t for t, _, _ in context]
+                
+                
+                results.append({
+                    'context': output,
+                    'sentence_index': sent_idx,
+                    'joined_setences': ' '.join(['\n' if t=='؎' else t for t, _, _ in sentence])
+                })
 
     results.sort(key=lambda x: x['context'][context_window])
     
-    return results, joined_setences, corpus_length
+    return results, corpus_length, token_dic, tag_dic, lemma_dic
 
 
 @app.route('/')
@@ -137,16 +179,16 @@ def index():
 
 @app.route('/search')
 def search():
-    query =                 request.args.get('q')
-    page =              int(request.args.get('page', 1))
-    context_window =    int(request.args.get('context_window', 5))
-    match_type =            request.args.get('match_type', 'token')
-    explicit =              request.args.get('explicit', 'exclude')
-    edit_error =       int(request.args.get('error_editing', True))
-    remove_pnc =       int(request.args.get('remove_punctuations', True))
-    remove_emoji =       int(request.args.get('remove_emojis', False))
+    query =              request.args.get('q')
+    page =           int(request.args.get('page', 1))
+    context_window = int(request.args.get('context_window', 5))
+    match_type =         request.args.get('match_type', 'token')
+    explicit =           request.args.get('explicit', 'exclude')
+    edit_error =     int(request.args.get('error_editing', True))
+    remove_pnc =     int(request.args.get('remove_punctuations', True))
+    remove_emoji =   int(request.args.get('remove_emojis', False))
     
-    results, joined_setences, corpus_length = search_corpus(
+    results, corpus_length, token_dic, tag_dic, lemma_dic = search_corpus(
         query, context_window, 
         match_type, explicit, 
         remove_pnc, edit_error, remove_emoji)
@@ -162,8 +204,10 @@ def search():
         total_frequency=total_frequency, 
         page=page, 
         per_page=per_page,
-        joined_setences=joined_setences,
-        corpus_length=corpus_length
+        corpus_length=corpus_length,
+        token_dic=token_dic, 
+        tag_dic=tag_dic, 
+        lemma_dic=lemma_dic
         )
 
 @app.route('/words')
