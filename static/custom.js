@@ -16,11 +16,25 @@ $(document).ready(function () {
         let query = $('#search').val();
         let context_window = Number($('input[name="range"]:checked').val());
         let match_type = $('input[name="search-type"]:checked').val();
+        let explicit = $('input[name="explicit-filtering"]:checked').val();
+        let checkboxResults = getCheckboxValues();
+        let errorEditing = checkboxResults['errorEditing'];
+        let removePunctuations = checkboxResults['removePunctuations'];
+        let removeEmojis = checkboxResults['removeEmojis']
 
         $.ajax({
             url: '/search',
             method: 'GET',
-            data: { q: query, page: page, context_window: context_window, match_type: match_type },
+            data: { 
+                q: query, page: page, 
+                context_window: context_window, 
+                match_type: match_type,
+                explicit: explicit,
+                error_editing: errorEditing,
+                remove_punctuations: removePunctuations,
+                remove_emojis: removeEmojis
+            },
+
             success: function (response) {
                 searchQuery = query;
                 resultsData = response.results; // Store results in the global variable
@@ -286,5 +300,20 @@ $(document).ready(function () {
         }
         return result;
       }
+
+      function getCheckboxValues() {
+        const errorEditingCheckbox = document.getElementById('error-editing-checkbox');
+        const removePunctuationsCheckbox = document.getElementById('remove-punctuations-checkbox');
+        const removeEmojisCheckbox = document.getElementById('remove-emojis-checkbox');
       
+        const errorEditingValue = errorEditingCheckbox.checked ? errorEditingCheckbox.value : document.getElementById('error-editing-hidden').value;
+        const removePunctuationsValue = removePunctuationsCheckbox.checked ? removePunctuationsCheckbox.value : document.getElementById('remove-punctuations-hidden').value;
+        const removeEmojisValue = removeEmojisCheckbox.checked ? removeEmojisCheckbox.value : document.getElementById('remove-emojis-hidden').value;
+        // Optionally, you can return these values as an object
+        return {
+          errorEditing: errorEditingValue,
+          removePunctuations: removePunctuationsValue,
+          removeEmojis: removeEmojisValue,
+        };
+    }
 });
