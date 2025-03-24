@@ -7,7 +7,7 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-CORPUS_DIR = 'corpus/whole_corpus.pkl'
+CORPUS_DIR = 'corpus/sample_corpus.pkl'
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
 def file_handling(path, mod="rb", data=""):
