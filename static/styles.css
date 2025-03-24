@@ -4,11 +4,12 @@
 
 .concordance-table {
     margin-top: 20px;
-    height: calc(100vh - 200px); /* Adjust height to fit within the viewport */
+    /* height: calc(100vh - 200px); /*Adjust height to fit within the viewport */
     overflow-y: auto; /* Add vertical scroll within the table if needed */
 }
 
 .context-column {
+    width: auto; /* Adjust the width of context columns */
     max-width: 400px;
     white-space: nowrap; /* Prevent words from wrapping */
 }
@@ -60,16 +61,21 @@
 }
 
 .kwic {
+    width: auto; /* Adjust the width of context columns */
     font-weight: bold;
     color: #2196F3;
 }
 
 .results-wrapper {
     direction: rtl;
+    overflow: visible; /* Change this to visible to remove scrolling */
+    max-height: none; /* Ensure there’s no max height */
 }
 
 #results-table {
     direction: rtl;
+    table-layout: fixed; /* Ensure the table layout is fixed */
+    width: 100%; /* Make sure the table width is 100% */
 }
 
 .selected {
@@ -77,16 +83,16 @@
 }
 
 /* Align radio buttons and labels to the left */
-.input-field div label {
+.checking-options div label {
     display: inline-block;
-    margin-right: 10px; /* Add some space between radio buttons */
+    /* margin-right: 10px; /* Add some space between radio buttons */
 }
 
-.input-field div label span {
+.checking-options div label span {
     margin-right: 5px;
 }
 
-.input-field div label input[type="radio"] {
+.checking-options div label input[type="radio"] {
     vertical-align: middle;
 }
 
@@ -98,4 +104,34 @@
 
 .pagination .disabled a {
     color: #bdbdbd;
+}
+
+.search-options {
+    display: inline-block;
+    padding: 3px;
+}
+
+.search-options-fieldset {
+    border: 2px solid rgba(1, 0, 0, 0.1);
+    border-radius: 10px; /* Rounds the corners */
+    padding: 2px;
+}
+
+.modals-options {
+    display: inline;
+}
+
+.form-legend{
+    font-weight:lighter;
+}
+
+hr{
+    color: lightgrey;
+}
+
+#sort-headers {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 1em;
+    direction: rtl;
 }
