@@ -7,7 +7,7 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-CORPUS_DIR = 'corpus/sample_corpus.pkl'
+CORPUS_DIR = 'corpus/whole_corpus.pkl'
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
 def file_handling(path, mod="rb", data=""):
@@ -21,10 +21,22 @@ def file_handling(path, mod="rb", data=""):
             pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
             print(colored(f"The file has been saved as\n", "yellow") + colored(path, "green"))
 
+def edit_errors(token):
+    if re.search(r'^.+\[ADD\]$', token):
+        return re.sub(r'^(.+)\[ADD\]$', r'\1', token)
+    elif re.search(r'^.+\[.+\]$', token):
+        return re.sub(r'^.+\[(.+)\]$', r'\1', token)
+    else:
+        raise "The token don't have a error struture"
+
 def search_corpus(
     target_word: str,
     context_window: int,
-    match_type: str
+    match_type: str,
+    explicit: str,
+    remove_pnc:bool,
+    edit_error:bool,
+    remove_emoji:bool,
     ) -> tuple:
     """
     Searches a corpus for occurrences of a target word within a specified context window.
@@ -65,11 +77,20 @@ def search_corpus(
 
         corpus_length += len(sentence)
 
+        if explicit=='exclude' and any(g[-2]=='T' for _,g,_ in sentence):
+            continue
+
         # Create a preprocessed list of tuples with normalized lemma
-        processed_sent = [
-            (tpl[0].lower(), tpl[1], DIACRITIC_PATTERN.sub('', tpl[2]).lower())
-            for tpl in sentence
-        ]
+        processed_sent = []
+        for token, tag, lemma in sentence:
+            if (edit_error and lemma=='[DEL]') or (remove_pnc and lemma=='[PNC]') or (remove_emoji and lemma=='[EMJ]'):
+                continue
+            if edit_error and tag[-1]=='E':
+                token = edit_errors(token)
+            if explicit=='mask' and tag[-2]=='T':
+                token = token[0] + (len(token)-2) * '*' + token[-1]
+            
+            processed_sent.append((token.lower(), tag, DIACRITIC_PATTERN.sub('', lemma).lower()))
         
         # Find matches using list comprehension
         matches = [
@@ -81,7 +102,7 @@ def search_corpus(
         for i, _, _ in matches:
             # Calculate window boundaries
             start = max(0, i - context_window)
-            end = min(len(sentence), i + context_window + 1)
+            end = min(len(processed_sent), i + context_window + 1)
             
             # Calculate required padding using clearer variable names
             left_pad = max(0, context_window - (i - start))
@@ -90,19 +111,21 @@ def search_corpus(
             # Build context with padding
             context = (
                 [padding_tuple] * left_pad +
-                sentence[start:end] +
+                processed_sent[start:end] +
                 [padding_tuple] * right_pad
             )
             
             # Extract tokens using list comprehension
-            context_tokens = [t for t, _, _ in context]
+            output = [t for t, _, _ in context]
+            
             
             results.append({
-                'context': context_tokens,
-                'sentence_index': sent_idx,
-                # f'{sent_idx}': ' '.join(['\n' if t=='؎' else t for t, _, _ in sentence])
+                'context': output,
+                'sentence_index': sent_idx
             })
+
             joined_setences[sent_idx] = ' '.join(['\n' if t=='؎' else t for t, _, _ in sentence])
+
     results.sort(key=lambda x: x['context'][context_window])
     
     return results, joined_setences, corpus_length
@@ -114,16 +137,26 @@ def index():
 
 @app.route('/search')
 def search():
-    query = request.args.get('q')
-    page = int(request.args.get('page', 1))
-    context_window = int(request.args.get('context_window', 5))
-    match_type = request.args.get('match_type', 'token')
+    query =                 request.args.get('q')
+    page =              int(request.args.get('page', 1))
+    context_window =    int(request.args.get('context_window', 5))
+    match_type =            request.args.get('match_type', 'token')
+    explicit =              request.args.get('explicit', 'exclude')
+    edit_error =       int(request.args.get('error_editing', True))
+    remove_pnc =       int(request.args.get('remove_punctuations', True))
+    remove_emoji =       int(request.args.get('remove_emojis', False))
+    
+    results, joined_setences, corpus_length = search_corpus(
+        query, context_window, 
+        match_type, explicit, 
+        remove_pnc, edit_error, remove_emoji)
+    
     per_page = 10
-    results, joined_setences, corpus_length = search_corpus(query, context_window, match_type)
     total_frequency = len(results)
     start = (page - 1) * per_page
     end = start + per_page
     paginated_results = results[start:end]
+
     return jsonify(
         results=paginated_results, 
         total_frequency=total_frequency, 
