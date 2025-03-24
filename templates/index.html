@@ -40,47 +40,102 @@
                     <input id="search" type="text" class="validate">
                     <label for="search">Search Query</label>
                     <button id="search-btn" class="btn waves-effect waves-light" type="button">Search</button>
-                    <div style="display: inline-block; margin-left: 10px;">
-                        <label>
-                            <input class="with-gap" name="range" type="radio" value="3" />
-                            <span>3</span>
-                        </label>
-                        <label>
-                            <input class="with-gap" name="range" type="radio" value="4" />
-                            <span>4</span>
-                        </label>
-                        <label>
-                            <input class="with-gap" name="range" type="radio" value="5" checked/>
-                            <span>5</span>
-                        </label>
-                        <label>
-                            <input class="with-gap" name="range" type="radio" value="6" />
-                            <span>6</span>
-                        </label>
-                        <label>
-                            <input class="with-gap" name="range" type="radio" value="7" />
-                            <span>7</span>
-                        </label>
-                        <label>
-                            <input class="with-gap" name="range" type="radio" value="8" />
-                            <span>8</span>
-                        </label>
+                </div>
+                <div class="checking-options">
+                    <div class= "search-options" id="window-size">
+                        <form>
+                            <fieldset class="search-options-fieldset">
+                                <legend class="form-legend">Window Size:</legend>
+                                <label>
+                                    <input class="window-size-radiobtn" name="range" type="radio" value="3" />
+                                    <span>3</span>
+                                </label>
+                                <label>
+                                    <input class="window-size-radiobtn" name="range" type="radio" value="4" />
+                                    <span>4</span>
+                                </label>
+                                <label>
+                                    <input class="window-size-radiobtn" name="range" type="radio" value="5" checked/>
+                                    <span>5</span>
+                                </label>
+                                <label>
+                                    <input class="window-size-radiobtn" name="range" type="radio" value="6" />
+                                    <span>6</span>
+                                </label>
+                                <label>
+                                    <input class="window-size-radiobtn" name="range" type="radio" value="7" />
+                                    <span>7</span>
+                                </label>
+                                <label>
+                                    <input class="window-size-radiobtn" name="range" type="radio" value="8" />
+                                    <span>8</span>
+                                </label>
+                            </fieldset>
+                        </form>
                     </div>
-                    <div class="searching-type" style="display: inline-block; margin-left: 10px;">
-                        <label>
-                            <input class="with-gap" name="search-type" type="radio" value="token" checked/>
-                            <span>Token</span>
-                        </label>
-                        <label>
-                            <input class="with-gap" name="search-type" type="radio" value="lemma" />
-                            <span>Lemma</span>
-                        </label>
+                    <div class= "search-options" id="search-type">
+                        <form>
+                            <fieldset class="search-options-fieldset">
+                                <legend class="form-legend">Search Type:</legend>
+                                <label>
+                                    <input class="search-type-radiobtn" name="search-type" type="radio" value="token" checked/>
+                                    <span>Token</span>
+                                </label>
+                                <label>
+                                    <input class="search-type-radiobtn" name="search-type" type="radio" value="lemma" />
+                                    <span>Lemma</span>
+                                </label>
+                            </fieldset>
+                        </form>
+                    </div>  
+                    <div class= "search-options" id="explicit-options">
+                        <form>
+                            <fieldset class="search-options-fieldset">
+                                <legend class="form-legend">Explicit Language:</legend>
+                                <label>
+                                    <input class="explicit-radiobtn" name="explicit-filtering" type="radio" value="exclude" checked/>
+                                    <span>Exclude</span>
+                                </label>
+                                <label>
+                                    <input class="explicit-radiobtn" name="explicit-filtering" type="radio" value="mask"/>
+                                    <span>Mask</span>
+                                </label>
+                                <label>
+                                    <input class="explicit-radiobtn" name="explicit-filtering" type="radio" value="none"/>
+                                    <span>None</span>
+                                </label>
+                            </fieldset>
+                        </form>
+                    </div>
+                    <div class= "search-options" id="remove-options">
+                        <form id="myForm">
+                            <fieldset class="search-options-fieldset">
+                              <legend class="form-legend">Remove:</legend>
+                              <label>
+                                <input class="remove-checkbox" id="error-editing-checkbox" type="checkbox" value="1" checked/>
+                                <span>Errors</span>
+                              </label>
+                              <input class="remove-checkbox" id="error-editing-hidden" name="error-editing" type="hidden" value="0" />
+                              
+                              <label>
+                                <input class="remove-checkbox" id="remove-punctuations-checkbox" type="checkbox" value="1" checked/>
+                                <span>PNCs</span>
+                              </label>
+                              <input class="remove-checkbox" id="remove-punctuations-hidden" name="remove-punctuations" type="hidden" value="0" />
+
+                              <label>
+                                <input class="remove-checkbox" id="remove-emojis-checkbox" type="checkbox" value="1"/>
+                                <span>Emojis</span>
+                              </label>
+                              <input class="remove-checkbox" id="remove-emojis-hidden" name="remove-emojis" type="hidden" value="0" />
+                            </fieldset>
+                        </form>    
                     </div>
                 </div>                
             </div>
         </div>
 
-        <div class="row">
+        <div id="modals-options">
             <div class="col s12" style="text-align: right;">
                 <div class="options-table">
                     <table>
@@ -149,12 +204,12 @@
     </div>
 
     <!-- Add this modal in the body section of your index.html file -->
-    <div id="sort-modal" class="modal">
+    <div class="modal" id="sort-modal">
         <div class="modal-content">
             <h4>Sort Options</h4>
             <hr>
             <form id="sort-form">
-                <div id="sort-headers" style="display: flex; justify-content: space-around; margin-bottom: 1em;">
+                <div id="sort-headers">
                     <!-- Radio buttons for headers will be dynamically added here -->
                 </div>
                 <div>
