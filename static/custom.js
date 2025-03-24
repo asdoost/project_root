@@ -21,7 +21,7 @@ $(document).ready(function () {
         let errorEditing = checkboxResults['errorEditing'];
         let removePunctuations = checkboxResults['removePunctuations'];
         let removeEmojis = checkboxResults['removeEmojis']
-
+        
         $.ajax({
             url: '/search',
             method: 'GET',
@@ -32,15 +32,17 @@ $(document).ready(function () {
                 explicit: explicit,
                 error_editing: errorEditing,
                 remove_punctuations: removePunctuations,
-                remove_emojis: removeEmojis
+                remove_emojis: removeEmojis,
             },
-
             success: function (response) {
                 searchQuery = query;
                 resultsData = response.results; // Store results in the global variable
                 totalFrequency = response.total_frequency;
-                corpus_length = response.corpus_length
-                joined_setences = response.joined_setences
+                corpusLength = response.corpus_length
+                joinedSetences = response.joined_setences
+                tokenDic = response.token_dic, 
+                tagDic = response.tag_dic, 
+                lemmaDic = response.lemma_dic
                 callback(response);
             }
         });
@@ -138,15 +140,31 @@ $(document).ready(function () {
         $('#dynamic-content').html(
             `<h4>Frequency Information</h4>
             <hr>
-            <p>
-            Query: ${searchQuery}
-            </br>
-            Frequency: ${totalFrequency}
-            </br>
-            Frequency (per thousand tokens): ${totalFrequency/1000}
-            </br>
-            Percentage in the corpus: ${(totalFrequency/corpus_length*100).toFixed(2)}
-            </p>`);
+            <table>
+                <tbody>
+                    <tr>
+                        <td>Query:</td>
+                        <td>${searchQuery}</td>
+                    </tr>
+                    <tr>
+                        <td>Lemmas:</td>
+                        <td>${Object.keys(lemmaDic).join('، ')}</td>
+                    </tr>
+                    <tr>
+                        <td>Tags:</td>
+                        <td>${Object.keys(tagDic).join('، ')}</td>
+                    </tr>
+                    <tr>
+                        <td>Frequency:</td>
+                        <td>${totalFrequency}</td>
+                        <td>per thousand tokens:</td>
+                        <td>${totalFrequency/1000}</td>
+                        <td>Percentage:</td>
+                        <td>${(totalFrequency/corpusLength*100).toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            `);
         $('#dynamic-content-modal').modal('open');
     }
 
@@ -214,7 +232,7 @@ $(document).ready(function () {
     });
 
     function fetchSentence(index) {
-        const sentence = joined_setences[index].replace(/\n/g, '<br>');
+        const sentence = joinedSetences[index]['joined_setences'].replace(/\n/g, '<br>');
         $('#dynamic-content').html(`
             <div>
                 <h4>The Full Tweet</h4>
