@@ -35,6 +35,14 @@
 
             </li>
             <li class="has-subnav">
+                <a href="{{ url_for('index') }}">
+                    <i class="fa fa-home fa-2x"></i>
+                    <span class="nav-text">
+                        <h6>KWIC</h6>
+                    </span>
+                </a>
+            </li>
+            <li class="has-subnav">
                 <a href="{{ url_for('corpus_selection') }}">
                     <i class="fa fa-database fa-2x"></i>
                     <span class="nav-text">
@@ -52,10 +60,10 @@
 
             </li>
             <li class="has-subnav">
-                <a href="{{ url_for('word_lists') }}">
+                <a href="{{ url_for('ngram') }}">
                     <i class="fa fa-list-alt fa-2x"></i>
                     <span class="nav-text">
-                        <h6>Word Lists</h6>
+                        <h6>N-gram</h6>
                     </span>
                 </a>
             </li>
