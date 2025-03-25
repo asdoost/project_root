@@ -12,7 +12,6 @@ $(document).ready(function () {
     $('.modal').modal();
 
     function getSearchResults(page, callback) {
-
         let query = $('#search').val();
         let context_window = Number($('input[name="range"]:checked').val());
         let match_type = $('input[name="search-type"]:checked').val();
@@ -21,13 +20,13 @@ $(document).ready(function () {
         let errorEditing = checkboxResults['errorEditing'];
         let removePunctuations = checkboxResults['removePunctuations'];
         let removeEmojis = checkboxResults['removeEmojis']
-        
+
         $.ajax({
             url: '/search',
             method: 'GET',
-            data: { 
-                q: query, page: page, 
-                context_window: context_window, 
+            data: {
+                q: query, page: page,
+                context_window: context_window,
                 match_type: match_type,
                 explicit: explicit,
                 error_editing: errorEditing,
@@ -36,13 +35,12 @@ $(document).ready(function () {
             },
             success: function (response) {
                 searchQuery = query;
-                resultsData = response.results; // Store results in the global variable
+                resultsData = response.results;
                 totalFrequency = response.total_frequency;
-                corpusLength = response.corpus_length
-                joinedSetences = response.joined_setences
-                tokenDic = response.token_dic, 
-                tagDic = response.tag_dic, 
-                lemmaDic = response.lemma_dic
+                corpusLength = response.corpus_length;
+                tokenDic = response.token_dic;
+                tagDic = response.tag_dic;
+                lemmaDic = response.lemma_dic;
                 callback(response);
             }
         });
@@ -62,12 +60,12 @@ $(document).ready(function () {
             <tr>
               <th>#</th>
               ${headers.map(header => {
-                if (header === 'KWIC') {
-                  return `<th class="kwic">${header}</th>`;
-                } else {
-                  return `<th class="context-column">${header}</th>`;
-                }
-              }).join('')}
+            if (header === 'KWIC') {
+                return `<th class="kwic">${header}</th>`;
+            } else {
+                return `<th class="context-column">${header}</th>`;
+            }
+        }).join('')}
             </tr>
           `);
 
@@ -83,9 +81,9 @@ $(document).ready(function () {
             let leftContextsHtml = leftContext.map(word =>
                 `<td class="context-column">${word}</td>`
             ).join('');
-            
+
             resultsTable.append(
-                `<tr data-index="${result.sentence_index}">
+                `<tr data-index="${index}">
                     <td>${(page - 1) * response.per_page + index + 1}</td>
                     ${rightContextsHtml}
                     <td class="kwic">${kwic}</td>
@@ -143,24 +141,24 @@ $(document).ready(function () {
             <table>
                 <tbody>
                     <tr>
-                        <td>Query:</td>
+                        <td class="statistic-titles">Query:</td>
                         <td>${searchQuery}</td>
                     </tr>
                     <tr>
-                        <td>Lemmas:</td>
+                        <td class="statistic-titles">Lemmas:</td>
                         <td>${Object.keys(lemmaDic).join('، ')}</td>
                     </tr>
                     <tr>
-                        <td>Tags:</td>
+                        <td class="statistic-titles">Tags:</td>
                         <td>${Object.keys(tagDic).join('، ')}</td>
                     </tr>
                     <tr>
-                        <td>Frequency:</td>
+                        <td class="statistic-titles">Frequency:</td>
                         <td>${totalFrequency}</td>
-                        <td>per thousand tokens:</td>
-                        <td>${totalFrequency/1000}</td>
-                        <td>Percentage:</td>
-                        <td>${(totalFrequency/corpusLength*100).toFixed(2)}</td>
+                        <td class="statistic-titles">Per thousand tokens:</td>
+                        <td>${totalFrequency / 1000}</td>
+                        <td class="statistic-titles">Percentage:</td>
+                        <td>${(totalFrequency / corpusLength * 100).toFixed(2)}</td>
                     </tr>
                 </tbody>
             </table>
@@ -169,14 +167,14 @@ $(document).ready(function () {
     }
 
     $('#search-btn').on('click', function () {
-        getSearchResults(1, function(response) {
+        getSearchResults(1, function (response) {
             displaySearchResults(response, 1);
         });
     });
 
     $('#search').on('keypress', function (e) {
         if (e.which === 13) {
-            getSearchResults(1, function(response) {
+            getSearchResults(1, function (response) {
                 displaySearchResults(response, 1);
             });
         }
@@ -185,7 +183,7 @@ $(document).ready(function () {
     $(document).on('click', '#pagination a', function (e) {
         e.preventDefault();
         var page = $(this).data('page');
-        getSearchResults(page, function(response) {
+        getSearchResults(page, function (response) {
             displaySearchResults(response, page);
         });
     });
@@ -232,7 +230,7 @@ $(document).ready(function () {
     });
 
     function fetchSentence(index) {
-        const sentence = joinedSetences[index]['joined_setences'].replace(/\n/g, '<br>');
+        const sentence = resultsData[index]['joined_sentences'].replace(/\n/g, '<br>');
         $('#dynamic-content').html(`
             <div>
                 <h4>The Full Tweet</h4>
@@ -242,7 +240,7 @@ $(document).ready(function () {
         );
         $('#dynamic-content-modal').modal('open');
     }
-    
+
 
     function downloadResults(format) {
         let dataStr;
@@ -310,28 +308,42 @@ $(document).ready(function () {
     function convertNumberToList(n) {
         let result = [];
         for (let i = n; i > 0; i--) {
-          result.push(`R${i}`);
+            result.push(`R${i}`);
         }
         result.push('KWIC');
         for (let i = 1; i <= n; i++) {
-          result.push(`L${i}`);
+            result.push(`L${i}`);
         }
         return result;
-      }
+    }
 
-      function getCheckboxValues() {
+    function getCheckboxValues() {
         const errorEditingCheckbox = document.getElementById('error-editing-checkbox');
         const removePunctuationsCheckbox = document.getElementById('remove-punctuations-checkbox');
         const removeEmojisCheckbox = document.getElementById('remove-emojis-checkbox');
-      
+
         const errorEditingValue = errorEditingCheckbox.checked ? errorEditingCheckbox.value : document.getElementById('error-editing-hidden').value;
         const removePunctuationsValue = removePunctuationsCheckbox.checked ? removePunctuationsCheckbox.value : document.getElementById('remove-punctuations-hidden').value;
         const removeEmojisValue = removeEmojisCheckbox.checked ? removeEmojisCheckbox.value : document.getElementById('remove-emojis-hidden').value;
         // Optionally, you can return these values as an object
         return {
-          errorEditing: errorEditingValue,
-          removePunctuations: removePunctuationsValue,
-          removeEmojis: removeEmojisValue,
+            errorEditing: errorEditingValue,
+            removePunctuations: removePunctuationsValue,
+            removeEmojis: removeEmojisValue,
         };
     }
+
+    // POS Tagger Script
+    $('#tag-btn').on('click', function () {
+        var text = $('#text-input').val();
+        $.ajax({
+            url: '/tag_text',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ text: text }),
+            success: function (response) {
+                $('#tagged-text').html(response.tagged_text);
+            }
+        });
+    });
 });
