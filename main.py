@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import re
 import json
@@ -10,7 +12,7 @@ from nltk.tag import pos_tag
 
 app = Flask(__name__)
 
-CORPUS_DIR = 'corpus/whole_corpus.pkl'
+CORPUS_DIR = 'corpus/sample_corpus.pkl'
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
 def file_handling(path, mod="rb", data=""):
@@ -103,7 +105,6 @@ def search_corpus(
 
     corpus = file_handling(CORPUS_DIR)
     results = []
-    joined_sentences = {}
     token_dic = {}
     tag_dic = {}
     lemma_dic = {}
@@ -229,9 +230,46 @@ def corpus_selection():
 def concordance():
     return render_template('concordance.html')
 
-@app.route('/word_lists')
-def word_lists():
-    return render_template('word_lists.html')
+def generate_ngrams(
+        num,
+        match_type: str,
+        explicit: str,
+        remove_pnc: bool,
+        edit_error: bool,
+        remove_emoji: bool,
+        ) -> tuple:
+    
+    corpus = file_handling(CORPUS_DIR)
+    ngrams = {}
+    for sentence in corpus:
+
+        processed_sent = []
+        for tok, tag, lem in sentence:
+            if ((edit_error and lem == '[DEL]') or
+                (remove_pnc and lem == '[PNC]') or
+                (remove_emoji and lem == '[EMJ]') or
+                (explicit=='exclude' and tag[-2] =='T')):
+                continue
+            elif match_type=='token' and edit_error and tag[-1]=='E':
+                tok = edit_errors(tok)
+            elif match_type=='token' and explicit=='mask' and tag[-2] =='T':
+                tok = tok[0] + (len(tok) - 2) * '*' + tok[-1]
+            elif match_type=='lemma' and explicit=='mask' and tag[-2] =='T':
+                lem = lem[0] + (len(lem) - 2) * '*' + lem[-1]
+            processed_sent.append(tok if match_type=='token' else tag if match_type=='tag' else lem)
+        
+        ngram = nltk.ngrams(
+            processed_sent, num, 
+            pad_left=True, pad_right=True, 
+            left_pad_symbol='<s>', right_pad_symbol='</s>'
+            )
+        for gram in ngram:
+            ngrams[gram] = ngrams.get(gram, 0) + 1
+    return sorted(ngrams.items(), key=lambda x: x[1], reverse=True)
+
+@app.route('/ngram')
+def ngram():
+    return render_template('ngram.html')
 
 @app.route('/statistics')
 def statistics():
