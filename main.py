@@ -3,28 +3,34 @@
 import os
 import re
 import json
-from pickle5 import pickle
-from termcolor import colored
-from flask import Flask, render_template, request, jsonify
 import nltk
-from nltk.tokenize import word_tokenize
+from pickle5 import pickle
 from nltk.tag import pos_tag
+from termcolor import colored
+from nltk.tokenize import word_tokenize
+from flask import Flask, render_template, request, jsonify, session
+
 
 app = Flask(__name__)
 
 CORPUS_DIR = 'corpus/sample_corpus.pkl'
-STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+FILES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'files')
 
 def file_handling(path, mod="rb", data=""):
+    try:
+        with open(path, mod) as handle:
+            if mod == "rb":
+                return pickle.load(handle)
+            elif mod == "wb":
+                pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                print(colored(f"File saved: {path}", "green"))
+    except Exception as e:
+        print(colored(f"Error handling file {path}: {e}", "red"))
+        raise
 
-    with open(path, mod) as handle:
-        if mod=="rb":
-            data = pickle.load(handle)
-            return data
-        
-        elif mod=="wb":
-            pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            print(colored(f"The file has been saved as\n", "yellow") + colored(path, "green"))
+# Replace generic Exception with a custom one in edit_errors
+class TokenError(Exception):
+    pass
 
 def edit_errors(token):
     if re.search(r'^.+\[ADD\]$', token):
@@ -32,7 +38,7 @@ def edit_errors(token):
     elif re.search(r'^.+\[.+\]$', token):
         return re.sub(r'^.+\[(.+)\]$', r'\1', token)
     else:
-        raise Exception("The token doesn't have an error structure")
+        raise TokenError("The token doesn't have an error structure")
 
 def wildcard_search(pattern, case_insensitive=False, exact_match=True):
     """
@@ -202,7 +208,7 @@ def search():
 @app.route('/words')
 def words():
     try:
-        with open(os.path.join(STATIC_DIR, 'autocomplete_words.json'), 'r') as file:
+        with open(os.path.join(FILES_DIR, 'autocomplete_words.json'), 'r') as file:
             words = json.load(file)
         return jsonify(words)
     except Exception as e:
@@ -230,6 +236,32 @@ def corpus_selection():
 def concordance():
     return render_template('concordance.html')
 
+@app.route('/ngram')
+def ngram():
+    return render_template('ngram.html')
+
+@app.route('/generate_ngrams', methods=['GET'])
+def generate_ngrams_route():
+    try:
+        params = {
+            'num': int(request.args.get('num', 2)),
+            'pad_left': request.args.get('pad_left', '1') == '1',
+            'pad_right': request.args.get('pad_right', '1') == '1',
+            'match_type': request.args.get('match_type', 'token'),
+            'explicit': request.args.get('explicit', 'exclude'),
+            'remove_pnc': request.args.get('remove_pnc', '0') == '1',
+            'edit_error': request.args.get('edit_error', '0') == '1',
+            'remove_emoji': request.args.get('remove_emoji', '0') == '1',
+        }
+        ngrams_list = generate_ngrams(**params)
+        
+        return jsonify({
+            'ngrams': ngrams_list,  # Return ALL results
+            'params': params
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 def generate_ngrams(
         num,
         match_type: str,
@@ -237,43 +269,126 @@ def generate_ngrams(
         remove_pnc: bool,
         edit_error: bool,
         remove_emoji: bool,
-        ) -> tuple:
+        pad_left: bool,
+        pad_right: bool
+        ) -> list:
+    
+    if not 1 <= num <= 5:
+        raise ValueError("Invalid n-gram size. Must be between 1-5")
     
     corpus = file_handling(CORPUS_DIR)
     ngrams = {}
     for sentence in corpus:
-
         processed_sent = []
         for tok, tag, lem in sentence:
             if ((edit_error and lem == '[DEL]') or
                 (remove_pnc and lem == '[PNC]') or
-                (remove_emoji and lem == '[EMJ]') or
-                (explicit=='exclude' and tag[-2] =='T')):
+                (remove_emoji and tag[0] == 'M') or
+                (explicit == 'exclude' and tag[-2] == 'T')):
                 continue
-            elif match_type=='token' and edit_error and tag[-1]=='E':
-                tok = edit_errors(tok)
-            elif match_type=='token' and explicit=='mask' and tag[-2] =='T':
-                tok = tok[0] + (len(tok) - 2) * '*' + tok[-1]
-            elif match_type=='lemma' and explicit=='mask' and tag[-2] =='T':
-                lem = lem[0] + (len(lem) - 2) * '*' + lem[-1]
-            processed_sent.append(tok if match_type=='token' else tag if match_type=='tag' else lem)
+
+            if match_type == 'token':
+                if edit_error and tag[-1] == 'E':
+                    tok = edit_errors(tok)
+                if explicit == 'mask' and tag[-2] == 'T':
+                    tok = tok[0] + (len(tok)-2)*'*' + tok[-1]
+                processed_sent.append(tok)
+
+            elif match_type == 'lemma':
+                if explicit == 'mask' and tag[-2] == 'T':
+                    lem = lem[0] + (len(lem)-2)*'*' + lem[-1]
+                processed_sent.append(lem)
         
         ngram = nltk.ngrams(
-            processed_sent, num, 
-            pad_left=True, pad_right=True, 
-            left_pad_symbol='<s>', right_pad_symbol='</s>'
-            )
+            processed_sent, num,
+            pad_left=pad_left,
+            pad_right=pad_right,
+            left_pad_symbol='[START]', 
+            right_pad_symbol='[END]'
+        )
         for gram in ngram:
             ngrams[gram] = ngrams.get(gram, 0) + 1
-    return sorted(ngrams.items(), key=lambda x: x[1], reverse=True)
+    
+    sorted_ngrams = sorted(ngrams.items(), key=lambda x: (-x[1], x[0]))
 
-@app.route('/ngram')
-def ngram():
-    return render_template('ngram.html')
+    return [{'gram': list(g), 'count': c} for g, c in sorted_ngrams]
 
-@app.route('/statistics')
-def statistics():
-    return render_template('statistics.html')
+@app.route('/skipgram')
+def skipgram():
+    return render_template('skipgram.html')
+
+@app.route('/generate_skipgrams', methods=['GET'])
+def generate_skipgrams_route():
+    try:
+        params = {
+            'num': int(request.args.get('num', 2)),
+            'skip': int(request.args.get('skip', 1)),  # New skip parameter
+            'match_type': request.args.get('match_type', 'token'),
+            'explicit': request.args.get('explicit', 'exclude'),
+            'remove_pnc': request.args.get('remove_pnc', '0') == '1',
+            'edit_error': request.args.get('edit_error', '0') == '1',
+            'remove_emoji': request.args.get('remove_emoji', '0') == '1',
+        }
+        skipgrams_list = generate_skipgrams(**params)
+        
+        return jsonify({
+            'skipgrams': skipgrams_list,  # Return ALL results
+            'params': params
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def generate_skipgrams(
+        num,
+        skip: int,  # New skip parameter
+        match_type: str,
+        explicit: str,
+        remove_pnc: bool,
+        edit_error: bool,
+        remove_emoji: bool
+        ) -> list:
+    
+    if not 1 <= num <= 5:
+        raise ValueError("Invalid n-gram size. Must be between 1-5")
+    if not 0 <= skip <= 5:
+        raise ValueError("Skip distance must be between 0-5")
+
+    corpus = file_handling(CORPUS_DIR)
+    skipgrams = {}
+    for sentence in corpus:
+        processed_sent = []
+        for tok, tag, lem in sentence:
+            # Same filtering logic as ngrams
+            if ((edit_error and lem == '[DEL]') or
+                (remove_pnc and lem == '[PNC]') or
+                (remove_emoji and tag[0] == 'M') or
+                (explicit == 'exclude' and tag[-2] == 'T')):
+                continue
+
+            if match_type == 'token':
+                if edit_error and tag[-1] == 'E':
+                    tok = edit_errors(tok)
+                if explicit == 'mask' and tag[-2] == 'T':
+                    tok = tok[0] + (len(tok)-2)*'*' + tok[-1]
+                processed_sent.append(tok)
+
+            elif match_type == 'lemma':
+                if explicit == 'mask' and tag[-2] == 'T':
+                    lem = lem[0] + (len(lem)-2)*'*' + lem[-1]
+                processed_sent.append(lem)
+        
+        # Key difference: Use skipgrams instead of ngrams
+        skipgram = nltk.skipgrams(
+            processed_sent, 
+            n=num,
+            k=skip  # Number of skips allowed
+        )
+        for gram in skipgram:
+            skipgrams[gram] = skipgrams.get(gram, 0) + 1
+    
+    sorted_skipgrams = sorted(skipgrams.items(), key=lambda x: (-x[1], x[0]))
+
+    return [{'gram': list(g), 'count': c} for g, c in sorted_skipgrams]
 
 if __name__ == '__main__':
     app.run(debug=True)
